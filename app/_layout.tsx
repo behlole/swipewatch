@@ -1,59 +1,126 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import React, { useEffect } from 'react';
+import { View, ActivityIndicator } from 'react-native';
+import { Stack, router, useSegments } from 'expo-router';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
-import { useColorScheme } from '@/components/useColorScheme';
+import { queryClient } from '../src/lib/queryClient';
+import { useAuth } from '../src/features/auth/hooks/useAuth';
+import { colors } from '../src/theme';
 
-export {
-  // Catch any errors thrown by the Layout component.
-  ErrorBoundary,
-} from 'expo-router';
+export { ErrorBoundary } from 'expo-router';
 
-export const unstable_settings = {
-  // Ensure that reloading on `/modal` keeps a back button present.
-  initialRouteName: '(tabs)',
-};
-
-// Prevent the splash screen from auto-hiding before asset loading is complete.
+// Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const [loaded, error] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-    ...FontAwesome.font,
+  const [fontsLoaded] = useFonts({
+    // Add custom fonts here if needed
   });
 
-  // Expo Router uses Error Boundaries to catch errors in the navigation tree.
   useEffect(() => {
-    if (error) throw error;
-  }, [error]);
-
-  useEffect(() => {
-    if (loaded) {
+    if (fontsLoaded) {
       SplashScreen.hideAsync();
     }
-  }, [loaded]);
+  }, [fontsLoaded]);
 
-  if (!loaded) {
+  if (!fontsLoaded) {
     return null;
   }
 
-  return <RootLayoutNav />;
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <QueryClientProvider client={queryClient}>
+        <RootLayoutNav />
+        <StatusBar style="light" />
+      </QueryClientProvider>
+    </GestureHandlerRootView>
+  );
 }
 
 function RootLayoutNav() {
-  const colorScheme = useColorScheme();
+  const { isAuthenticated, isLoading, hasCompletedOnboarding, isNewSignup } = useAuth();
+  const segments = useSegments();
+
+  useEffect(() => {
+    console.log('[Nav] Auth state:', { isLoading, isAuthenticated, hasCompletedOnboarding, isNewSignup, segments: segments[0] });
+
+    if (isLoading) return;
+
+    const inAuthGroup = segments[0] === '(auth)';
+    const inOnboardingGroup = segments[0] === '(onboarding)';
+
+    if (!isAuthenticated && !inAuthGroup) {
+      // Redirect to welcome if not authenticated
+      console.log('[Nav] Redirecting to welcome - not authenticated');
+      router.replace('/(auth)/welcome');
+    } else if (isAuthenticated && inAuthGroup) {
+      // Check if onboarding is needed
+      if (!hasCompletedOnboarding) {
+        // New signup goes to taste onboarding first
+        if (isNewSignup) {
+          console.log('[Nav] Redirecting to taste onboarding - new signup');
+          router.replace('/(onboarding)/taste');
+        } else {
+          console.log('[Nav] Redirecting to onboarding - not completed');
+          router.replace('/(onboarding)/genres');
+        }
+      } else {
+        console.log('[Nav] Redirecting to tabs - authenticated and onboarding done');
+        router.replace('/(tabs)');
+      }
+    } else if (isAuthenticated && !hasCompletedOnboarding && !inOnboardingGroup) {
+      // User is authenticated but hasn't completed onboarding
+      if (isNewSignup) {
+        console.log('[Nav] Redirecting to taste onboarding - new signup');
+        router.replace('/(onboarding)/taste');
+      } else {
+        console.log('[Nav] Redirecting to onboarding - authenticated but not completed');
+        router.replace('/(onboarding)/genres');
+      }
+    }
+  }, [isAuthenticated, isLoading, segments, hasCompletedOnboarding, isNewSignup]);
+
+  if (isLoading) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: colors.dark.background.primary,
+        }}
+      >
+        <ActivityIndicator size="large" color={colors.primary[500]} />
+      </View>
+    );
+  }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-      </Stack>
-    </ThemeProvider>
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: {
+          backgroundColor: colors.dark.background.primary,
+        },
+        animation: 'slide_from_right',
+      }}
+    >
+      <Stack.Screen name="(auth)" />
+      <Stack.Screen name="(onboarding)" />
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="group" />
+      <Stack.Screen
+        name="media/[type]/[id]"
+        options={{
+          presentation: 'modal',
+          animation: 'slide_from_bottom',
+        }}
+      />
+    </Stack>
   );
 }

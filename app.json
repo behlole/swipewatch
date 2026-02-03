@@ -3,7 +3,7 @@
     "name": "swipewatch",
     "slug": "swipewatch",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "swipewatch",
     "userInterfaceStyle": "automatic",
@@ -17,12 +17,17 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.swipewatch.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#0D0D0D"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.INTERNET"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -30,7 +35,8 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-screen-orientation"
     ],
     "experiments": {
       "typedRoutes": true
