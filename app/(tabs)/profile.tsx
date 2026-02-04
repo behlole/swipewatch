@@ -11,6 +11,7 @@ import { useSwipeStore } from '../../src/features/swipe/stores/swipeStore';
 import { useWatchlistStore } from '../../src/features/watchlist/stores/watchlistStore';
 import { usePreferencesStore, STREAMING_SERVICES, ALL_GENRES } from '../../src/stores/preferencesStore';
 import { useTasteStats } from '../../src/hooks/useTasteProfile';
+import { AdBanner } from '../../src/features/ads';
 
 export default function ProfileScreen() {
   const theme = useTheme();
@@ -141,6 +142,9 @@ export default function ProfileScreen() {
             color={theme.colors.accent.yellow}
           />
         </View>
+
+        {/* Ad Banner */}
+        <AdBanner placement="profile_section" size="mediumRectangle" />
 
         {/* AI Taste Profile Section */}
         <View style={styles.section}>

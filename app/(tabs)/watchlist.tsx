@@ -1,13 +1,16 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { View, StyleSheet, FlatList, Pressable, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Text, Chip, Badge } from '../../src/components/ui';
 import { PosterCard } from '../../src/components/media';
+import { AdNativeListItem } from '../../src/features/ads';
 import { useWatchlist } from '../../src/features/watchlist/hooks/useWatchlist';
 import { useTheme, spacing, borderRadius } from '../../src/theme';
 import { WatchlistItem } from '../../src/types';
+
+const AD_INTERVAL = 8; // Show ad every 8 items
 
 type FilterOption = 'all' | 'movie' | 'tv' | 'watched' | 'unwatched';
 type SortOption = 'dateAdded' | 'title' | 'rating' | 'year';
@@ -62,8 +65,10 @@ export default function WatchlistScreen() {
     );
   };
 
-  const renderItem = ({ item }: { item: WatchlistItem }) => {
+  const renderItem = useCallback(({ item, index }: { item: WatchlistItem; index: number }) => {
     const media = toMedia(item);
+    // Show inline ad in list view every AD_INTERVAL items (not in grid view)
+    const shouldShowAd = !isGridView && index > 0 && index % AD_INTERVAL === 0;
 
     if (isGridView) {
       return (
@@ -86,46 +91,49 @@ export default function WatchlistScreen() {
     }
 
     return (
-      <Pressable
-        onPress={() => handleItemPress(item)}
-        onLongPress={() => handleLongPress(item)}
-        style={[styles.listItem, { backgroundColor: theme.colors.background.secondary }]}
-      >
-        <PosterCard media={media} size="sm" showRating={false} showTitle={false} />
-        <View style={styles.listItemInfo}>
-          <Text variant="body" numberOfLines={2}>
-            {item.title}
-          </Text>
-          <Text variant="caption" color="secondary">
-            {item.releaseYear} • {item.contentType === 'movie' ? 'Movie' : 'TV Show'}
-          </Text>
-          <View style={styles.listItemMeta}>
-            <Ionicons name="star" size={12} color={theme.colors.rating.excellent} />
-            <Text variant="caption" style={{ color: theme.colors.rating.excellent }}>
-              {item.voteAverage.toFixed(1)}
-            </Text>
-          </View>
-        </View>
+      <>
+        {shouldShowAd && <AdNativeListItem placement="watchlist_inline" />}
         <Pressable
-          onPress={() => toggleWatched(item.contentId)}
-          style={[
-            styles.watchedToggle,
-            {
-              backgroundColor: item.watched
-                ? theme.colors.success
-                : theme.colors.background.tertiary,
-            },
-          ]}
+          onPress={() => handleItemPress(item)}
+          onLongPress={() => handleLongPress(item)}
+          style={[styles.listItem, { backgroundColor: theme.colors.background.secondary }]}
         >
-          <Ionicons
+          <PosterCard media={media} size="sm" showRating={false} showTitle={false} />
+          <View style={styles.listItemInfo}>
+            <Text variant="body" numberOfLines={2}>
+              {item.title}
+            </Text>
+            <Text variant="caption" color="secondary">
+              {item.releaseYear} • {item.contentType === 'movie' ? 'Movie' : 'TV Show'}
+            </Text>
+            <View style={styles.listItemMeta}>
+              <Ionicons name="star" size={12} color={theme.colors.rating.excellent} />
+              <Text variant="caption" style={{ color: theme.colors.rating.excellent }}>
+                {item.voteAverage.toFixed(1)}
+              </Text>
+            </View>
+          </View>
+          <Pressable
+            onPress={() => toggleWatched(item.contentId)}
+            style={[
+              styles.watchedToggle,
+              {
+                backgroundColor: item.watched
+                  ? theme.colors.success
+                  : theme.colors.background.tertiary,
+              },
+            ]}
+          >
+            <Ionicons
             name={item.watched ? 'checkmark' : 'eye-outline'}
             size={20}
             color={item.watched ? '#FFFFFF' : theme.colors.text.secondary}
           />
         </Pressable>
       </Pressable>
+      </>
     );
-  };
+  }, [isGridView, toMedia, handleItemPress, handleLongPress, toggleWatched, theme.colors]);
 
   const isEmpty = items.length === 0;
 

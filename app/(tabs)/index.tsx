@@ -7,6 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Text, Skeleton } from '../../src/components/ui';
 import { MediaRow, BackdropCard, PosterCard } from '../../src/components/media';
 import { ForYouSection } from '../../src/components/recommendations';
+import { AdNativeRow } from '../../src/features/ads';
 import { useDiscovery, useSearch } from '../../src/hooks/useDiscovery';
 import { useAuthStore } from '../../src/features/auth/stores/authStore';
 import { useTheme, spacing, borderRadius } from '../../src/theme';
@@ -250,6 +251,9 @@ export default function DiscoverScreen() {
             isLoadingMore={isLoadingMorePopular}
             hasMore={hasMorePopular}
           />
+
+          {/* Sponsored Ad */}
+          <AdNativeRow placement="home_between_rows" />
 
           {/* Top Rated */}
           <MediaRow

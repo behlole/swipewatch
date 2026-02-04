@@ -15,6 +15,7 @@ import {
   getConfidenceColor,
   getMaturityLabel,
 } from '../src/hooks/useAnalytics';
+import { AdBanner } from '../src/features/ads';
 
 export default function AnalyticsScreen() {
   const theme = useTheme();
@@ -149,6 +150,9 @@ export default function AnalyticsScreen() {
             </View>
           </View>
         </SectionCard>
+
+        {/* Ad Banner */}
+        <AdBanner placement="analytics_section" size="mediumRectangle" />
 
         {/* Genre Insights */}
         <SectionCard

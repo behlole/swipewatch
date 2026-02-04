@@ -26,7 +26,8 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "android.permission.INTERNET"
+        "android.permission.INTERNET",
+        "com.google.android.gms.permission.AD_ID"
       ]
     },
     "web": {
@@ -36,7 +37,14 @@
     },
     "plugins": [
       "expo-router",
-      "expo-screen-orientation"
+      "expo-screen-orientation",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-xxxxxxxxxxxxxxxx~yyyyyyyyyy",
+          "iosAppId": "ca-app-pub-xxxxxxxxxxxxxxxx~yyyyyyyyyy"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

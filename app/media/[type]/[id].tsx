@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { Text, Button, Chip, Avatar, Skeleton } from '../../../src/components/ui';
+import { AdBanner } from '../../../src/features/ads';
 import { useTheme, spacing, borderRadius, getRatingColor } from '../../../src/theme';
 import {
   getMovieDetails,
@@ -484,6 +485,9 @@ export default function MediaDetailScreen() {
               )}
             </View>
           </View>
+
+          {/* Ad Banner */}
+          <AdBanner placement="media_detail" size="banner" />
 
           {/* Overview */}
           <View style={styles.section}>
