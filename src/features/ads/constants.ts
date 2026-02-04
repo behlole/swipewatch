@@ -1,20 +1,23 @@
 import { TestIds } from 'react-native-google-mobile-ads';
 import { AdPlacement, FrequencyCapConfig } from './types';
 
-// Use test IDs in development, production IDs from env vars in production
-export const AD_UNIT_IDS: Record<AdPlacement, string> = __DEV__
+// Set EXPO_PUBLIC_USE_TEST_ADS=true in .env to use test ads
+// Set EXPO_PUBLIC_USE_TEST_ADS=false to use real production ads
+const USE_TEST_ADS = process.env.EXPO_PUBLIC_USE_TEST_ADS !== 'false';
+
+export const AD_UNIT_IDS: Record<AdPlacement, string> = USE_TEST_ADS
   ? {
-      home_between_rows: TestIds.NATIVE,
+      home_between_rows: TestIds.BANNER,
       swipe_interstitial: TestIds.INTERSTITIAL,
-      watchlist_inline: TestIds.NATIVE,
+      watchlist_inline: TestIds.BANNER,
       profile_section: TestIds.BANNER,
       media_detail: TestIds.BANNER,
       analytics_section: TestIds.BANNER,
     }
   : {
-      home_between_rows: process.env.EXPO_PUBLIC_ADMOB_NATIVE_HOME || TestIds.NATIVE,
+      home_between_rows: process.env.EXPO_PUBLIC_ADMOB_NATIVE_HOME || TestIds.BANNER,
       swipe_interstitial: process.env.EXPO_PUBLIC_ADMOB_INTERSTITIAL_SWIPE || TestIds.INTERSTITIAL,
-      watchlist_inline: process.env.EXPO_PUBLIC_ADMOB_NATIVE_WATCHLIST || TestIds.NATIVE,
+      watchlist_inline: process.env.EXPO_PUBLIC_ADMOB_NATIVE_WATCHLIST || TestIds.BANNER,
       profile_section: process.env.EXPO_PUBLIC_ADMOB_BANNER_PROFILE || TestIds.BANNER,
       media_detail: process.env.EXPO_PUBLIC_ADMOB_BANNER_DETAIL || TestIds.BANNER,
       analytics_section: process.env.EXPO_PUBLIC_ADMOB_BANNER_ANALYTICS || TestIds.BANNER,

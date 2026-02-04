@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { Stack, router, useSegments } from 'expo-router';
 import { useFonts } from 'expo-font';
@@ -6,6 +6,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
+import mobileAds from 'react-native-google-mobile-ads';
 import 'react-native-reanimated';
 
 import { queryClient } from '../src/lib/queryClient';
@@ -21,14 +22,29 @@ export default function RootLayout() {
   const [fontsLoaded] = useFonts({
     // Add custom fonts here if needed
   });
+  const [adsInitialized, setAdsInitialized] = useState(false);
 
   useEffect(() => {
-    if (fontsLoaded) {
+    // Initialize Google Mobile Ads SDK
+    mobileAds()
+      .initialize()
+      .then((adapterStatuses) => {
+        console.log('[Ads] Mobile Ads SDK initialized:', adapterStatuses);
+        setAdsInitialized(true);
+      })
+      .catch((error) => {
+        console.warn('[Ads] Failed to initialize Mobile Ads SDK:', error);
+        setAdsInitialized(true); // Continue even if ads fail
+      });
+  }, []);
+
+  useEffect(() => {
+    if (fontsLoaded && adsInitialized) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded]);
+  }, [fontsLoaded, adsInitialized]);
 
-  if (!fontsLoaded) {
+  if (!fontsLoaded || !adsInitialized) {
     return null;
   }
 

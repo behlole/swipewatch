@@ -15,25 +15,28 @@ interface AdNativeRowProps {
 
 export function AdNativeRow({ placement }: AdNativeRowProps) {
   const theme = useTheme();
-  const { isPremium, adsEnabled, canShowAd, recordImpression } = useAdStore();
+  const { isPremium, adsEnabled, recordImpression } = useAdStore();
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
 
-  const shouldShow = !isPremium && adsEnabled && canShowAd(placement);
+  // Simplified: always show ads for debugging
+  console.log(`[AdNativeRow] Rendering for ${placement}, isPremium: ${isPremium}, adsEnabled: ${adsEnabled}`);
 
   const handleAdLoaded = useCallback(() => {
+    console.log(`[AdNativeRow] Ad loaded successfully for ${placement}`);
     setIsLoading(false);
     setHasError(false);
     recordImpression(placement);
   }, [placement, recordImpression]);
 
   const handleAdFailed = useCallback((error: Error) => {
+    console.log(`[AdNativeRow] Ad failed for ${placement}:`, error.message);
     setIsLoading(false);
     setHasError(true);
-    console.warn(`[AdNativeRow] Failed to load ad for ${placement}:`, error.message);
   }, [placement]);
 
-  if (!shouldShow) {
+  // Skip if premium user
+  if (isPremium) {
     return null;
   }
 

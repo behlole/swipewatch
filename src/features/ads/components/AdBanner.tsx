@@ -28,26 +28,27 @@ export function AdBanner({
   ...props
 }: AdBannerProps) {
   const theme = useTheme();
-  const { isPremium, adsEnabled, canShowAd, recordImpression } = useAdStore();
+  const { isPremium, recordImpression } = useAdStore();
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
 
-  const shouldShow = !isPremium && adsEnabled && canShowAd(placement);
+  console.log(`[AdBanner] Rendering for ${placement}, isPremium: ${isPremium}`);
 
   const handleAdLoaded = useCallback(() => {
+    console.log(`[AdBanner] Ad loaded successfully for ${placement}`);
     setIsLoading(false);
     setHasError(false);
     recordImpression(placement);
   }, [placement, recordImpression]);
 
   const handleAdFailed = useCallback((error: Error) => {
+    console.log(`[AdBanner] Ad failed for ${placement}:`, error.message);
     setIsLoading(false);
     setHasError(true);
-    console.warn(`[AdBanner] Failed to load ad for ${placement}:`, error.message);
   }, [placement]);
 
-  // Don't render if premium, ads disabled, or frequency cap reached
-  if (!shouldShow) {
+  // Don't render for premium users
+  if (isPremium) {
     return null;
   }
 

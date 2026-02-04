@@ -15,25 +15,26 @@ interface AdNativeListItemProps {
 
 export function AdNativeListItem({ placement }: AdNativeListItemProps) {
   const theme = useTheme();
-  const { isPremium, adsEnabled, canShowAd, recordImpression } = useAdStore();
+  const { isPremium, recordImpression } = useAdStore();
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
 
-  const shouldShow = !isPremium && adsEnabled && canShowAd(placement);
+  console.log(`[AdNativeListItem] Rendering for ${placement}, isPremium: ${isPremium}`);
 
   const handleAdLoaded = useCallback(() => {
+    console.log(`[AdNativeListItem] Ad loaded successfully for ${placement}`);
     setIsLoading(false);
     setHasError(false);
     recordImpression(placement);
   }, [placement, recordImpression]);
 
   const handleAdFailed = useCallback((error: Error) => {
+    console.log(`[AdNativeListItem] Ad failed for ${placement}:`, error.message);
     setIsLoading(false);
     setHasError(true);
-    console.warn(`[AdNativeListItem] Failed to load ad for ${placement}:`, error.message);
   }, [placement]);
 
-  if (!shouldShow) {
+  if (isPremium) {
     return null;
   }
 
