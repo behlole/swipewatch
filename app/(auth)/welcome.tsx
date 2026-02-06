@@ -1,29 +1,40 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { Text, Button } from '../../src/components/ui';
-import { useTheme, spacing } from '../../src/theme';
+import { Logo } from '../../src/components/Logo';
+import { useTheme, spacing, colors } from '../../src/theme';
+
+const { width, height } = Dimensions.get('window');
 
 export default function WelcomeScreen() {
   const theme = useTheme();
 
   return (
     <View style={styles.container}>
-      {/* Background Image Placeholder */}
+      {/* Background gradient */}
       <LinearGradient
-        colors={[theme.colors.primary[900], theme.colors.background.primary]}
+        colors={['#1A0505', '#0D0D0D', '#0D0D0D']}
         style={StyleSheet.absoluteFill}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 0.4 }}
       />
+
+      {/* Decorative circles */}
+      <View style={styles.decorativeCircle1} />
+      <View style={styles.decorativeCircle2} />
 
       <SafeAreaView style={styles.content}>
         {/* Logo/Header */}
         <View style={styles.header}>
-          <Text variant="display2" align="center" style={styles.logo}>
+          <Logo size={100} />
+          <Text variant="display2" align="center" style={styles.appName}>
             SwipeWatch
           </Text>
-          <Text variant="body" color="secondary" align="center">
+          <Text variant="body" color="secondary" align="center" style={styles.tagline}>
             Find your next favorite movie
           </Text>
         </View>
@@ -31,19 +42,22 @@ export default function WelcomeScreen() {
         {/* Features */}
         <View style={styles.features}>
           <FeatureItem
-            icon="🎬"
+            icon="play-circle"
+            color={colors.primary[500]}
             title="Swipe to Discover"
-            description="Like Tinder, but for movies"
+            description="Like Tinder, but for movies and TV shows"
           />
           <FeatureItem
-            icon="👥"
+            icon="people"
+            color={colors.accent.watchlist}
             title="Watch Together"
-            description="Find movies everyone will love"
+            description="Match with friends to find movies everyone loves"
           />
           <FeatureItem
-            icon="📺"
-            title="Track Your Watchlist"
-            description="Never forget what to watch"
+            icon="bookmark"
+            color={colors.accent.like}
+            title="Smart Watchlist"
+            description="AI-powered recommendations based on your taste"
           />
         </View>
 
@@ -52,12 +66,13 @@ export default function WelcomeScreen() {
           <Button
             fullWidth
             onPress={() => router.push('/(auth)/sign-up')}
+            style={styles.primaryButton}
           >
             Get Started
           </Button>
 
           <Button
-            variant="ghost"
+            variant="secondary"
             fullWidth
             onPress={() => router.push('/(auth)/sign-in')}
           >
@@ -71,20 +86,22 @@ export default function WelcomeScreen() {
 
 function FeatureItem({
   icon,
+  color,
   title,
   description,
 }: {
-  icon: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  color: string;
   title: string;
   description: string;
 }) {
   return (
     <View style={styles.featureItem}>
-      <Text variant="display1" style={styles.featureIcon}>
-        {icon}
-      </Text>
+      <View style={[styles.featureIconContainer, { backgroundColor: color + '20' }]}>
+        <Ionicons name={icon} size={24} color={color} />
+      </View>
       <View style={styles.featureText}>
-        <Text variant="h4">{title}</Text>
+        <Text variant="h4" style={styles.featureTitle}>{title}</Text>
         <Text variant="bodySmall" color="secondary">
           {description}
         </Text>
@@ -96,6 +113,27 @@ function FeatureItem({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: colors.dark.background.primary,
+  },
+  decorativeCircle1: {
+    position: 'absolute',
+    top: -height * 0.15,
+    right: -width * 0.25,
+    width: width * 0.7,
+    height: width * 0.7,
+    borderRadius: width * 0.35,
+    backgroundColor: colors.primary[500],
+    opacity: 0.06,
+  },
+  decorativeCircle2: {
+    position: 'absolute',
+    bottom: -height * 0.1,
+    left: -width * 0.2,
+    width: width * 0.5,
+    height: width * 0.5,
+    borderRadius: width * 0.25,
+    backgroundColor: colors.primary[500],
+    opacity: 0.04,
   },
   content: {
     flex: 1,
@@ -103,29 +141,54 @@ const styles = StyleSheet.create({
     padding: spacing.screenPadding,
   },
   header: {
-    marginTop: spacing['3xl'],
     alignItems: 'center',
+    marginTop: spacing.xl,
   },
-  logo: {
+  appName: {
     fontWeight: '800',
-    marginBottom: spacing.sm,
+    marginTop: spacing.lg,
+    letterSpacing: -0.5,
+  },
+  tagline: {
+    marginTop: spacing.xs,
+    opacity: 0.8,
   },
   features: {
-    gap: spacing.xl,
+    gap: spacing.lg,
+    paddingHorizontal: spacing.sm,
   },
   featureItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.lg,
+    gap: spacing.md,
+    backgroundColor: colors.dark.background.secondary,
+    padding: spacing.md,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.dark.border.subtle,
   },
-  featureIcon: {
-    fontSize: 40,
+  featureIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   featureText: {
     flex: 1,
   },
+  featureTitle: {
+    marginBottom: 2,
+  },
   actions: {
     gap: spacing.md,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  primaryButton: {
+    shadowColor: colors.primary[500],
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
 });
