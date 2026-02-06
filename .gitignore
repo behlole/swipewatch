@@ -52,3 +52,4 @@ GoogleService-Info.plist
 # generated native folders
 /ios
 /android
+google-service-account.json

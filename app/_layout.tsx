@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View } from 'react-native';
 import { Stack, router, useSegments } from 'expo-router';
 import { useFonts } from 'expo-font';
-import * as SplashScreen from 'expo-splash-screen';
+import * as ExpoSplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
@@ -12,17 +12,21 @@ import 'react-native-reanimated';
 import { queryClient } from '../src/lib/queryClient';
 import { useAuth } from '../src/features/auth/hooks/useAuth';
 import { colors } from '../src/theme';
+import { SplashScreen } from '../src/components/SplashScreen';
+import { Logo } from '../src/components/Logo';
 
 export { ErrorBoundary } from 'expo-router';
 
-// Prevent splash screen from auto-hiding
-SplashScreen.preventAutoHideAsync();
+// Prevent native splash screen from auto-hiding
+ExpoSplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
     // Add custom fonts here if needed
   });
   const [adsInitialized, setAdsInitialized] = useState(false);
+  const [showAnimatedSplash, setShowAnimatedSplash] = useState(true);
+  const [appReady, setAppReady] = useState(false);
 
   useEffect(() => {
     // Initialize Google Mobile Ads SDK
@@ -40,12 +44,24 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (fontsLoaded && adsInitialized) {
-      SplashScreen.hideAsync();
+      // Hide native splash, show animated splash
+      ExpoSplashScreen.hideAsync();
+      setAppReady(true);
     }
   }, [fontsLoaded, adsInitialized]);
 
-  if (!fontsLoaded || !adsInitialized) {
+  const handleSplashComplete = () => {
+    setShowAnimatedSplash(false);
+  };
+
+  // Show nothing until fonts and ads are ready
+  if (!appReady) {
     return null;
+  }
+
+  // Show animated splash screen
+  if (showAnimatedSplash) {
+    return <SplashScreen onAnimationComplete={handleSplashComplete} />;
   }
 
   return (
@@ -111,7 +127,7 @@ function RootLayoutNav() {
           backgroundColor: colors.dark.background.primary,
         }}
       >
-        <ActivityIndicator size="large" color={colors.primary[500]} />
+        <Logo size={60} />
       </View>
     );
   }
