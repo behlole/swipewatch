@@ -1,4 +1,4 @@
-name: EAS Build & Submit
+name: EAS Build & Deploy
 
 on:
   push:
@@ -6,6 +6,9 @@ on:
       - main
     tags:
       - 'v*'
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       platform:
@@ -32,59 +35,52 @@ on:
         default: false
         type: boolean
 
+env:
+  NODE_VERSION: 20
+
 jobs:
-  build:
-    name: EAS Build
+  # ──────────────────────────────────────────────
+  # Lint & Type Check (runs on all PRs and pushes)
+  # ──────────────────────────────────────────────
+  lint:
+    name: Lint & Type Check
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-
-      - name: Setup Expo
-        uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Build Android (on tag push)
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: eas build --platform android --profile production --non-interactive
+      - name: TypeScript check
+        run: npx tsc --noEmit
+        continue-on-error: true
 
-      - name: Build Android (manual trigger)
-        if: github.event_name == 'workflow_dispatch' && (inputs.platform == 'android' || inputs.platform == 'all')
-        run: eas build --platform android --profile ${{ inputs.profile }} --non-interactive
-
-      - name: Submit to Google Play (on tag with submit)
-        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.submit)
-        run: eas submit --platform android --latest --non-interactive
-        env:
-          GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
-
-  # Optional: Run on main branch pushes for preview builds
+  # ──────────────────────────────────────────────
+  # Preview Build (on push to main)
+  # ──────────────────────────────────────────────
   preview:
-    name: Preview Build
+    name: Preview Build (APK)
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/')
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
-      - name: Setup Expo
+      - name: Setup Expo & EAS
         uses: expo/expo-github-action@v8
         with:
           eas-version: latest
@@ -95,3 +91,109 @@ jobs:
 
       - name: Build preview APK
         run: eas build --platform android --profile preview --non-interactive
+
+  # ──────────────────────────────────────────────
+  # Production Build & Submit (on tag push v*)
+  # ──────────────────────────────────────────────
+  production:
+    name: Production Build & Submit
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup Expo & EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create Google Service Account key
+        run: echo '${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}' > google-service-account.json
+
+      - name: Build production AAB
+        run: eas build --platform android --profile production --non-interactive
+
+      - name: Submit to Google Play
+        run: eas submit --platform android --latest --non-interactive
+
+  # ──────────────────────────────────────────────
+  # Manual Build (workflow_dispatch)
+  # ──────────────────────────────────────────────
+  manual:
+    name: Manual Build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup Expo & EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create Google Service Account key
+        if: inputs.submit
+        run: echo '${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}' > google-service-account.json
+
+      - name: Build Android
+        if: inputs.platform == 'android' || inputs.platform == 'all'
+        run: eas build --platform android --profile ${{ inputs.profile }} --non-interactive
+
+      - name: Build iOS
+        if: inputs.platform == 'ios' || inputs.platform == 'all'
+        run: eas build --platform ios --profile ${{ inputs.profile }} --non-interactive
+
+      - name: Submit to Google Play
+        if: inputs.submit && (inputs.platform == 'android' || inputs.platform == 'all')
+        run: eas submit --platform android --latest --non-interactive
+
+  # ──────────────────────────────────────────────
+  # OTA Update (for JS-only changes, faster deploy)
+  # ──────────────────────────────────────────────
+  update:
+    name: EAS Update (OTA)
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup Expo & EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Push OTA update
+        run: eas update --branch production --message "${{ github.event.head_commit.message }}" --non-interactive
