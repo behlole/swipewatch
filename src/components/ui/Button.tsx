@@ -5,24 +5,42 @@ import {
   StyleSheet,
   ActivityIndicator,
   View,
+  ViewStyle,
 } from 'react-native';
-import { useTheme, borderRadius, spacing } from '../../theme';
+import { useTheme, borderRadius, spacing, typography } from '../../theme';
 import { Text } from './Text';
 import { Ionicons } from '@expo/vector-icons';
 
-type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
+type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'success';
 type ButtonSize = 'sm' | 'md' | 'lg';
 
 interface ButtonProps extends Omit<PressableProps, 'children'> {
+  /** Button style variant */
   variant?: ButtonVariant;
+  /** Button size */
   size?: ButtonSize;
+  /** Full width button */
   fullWidth?: boolean;
+  /** Show loading spinner */
   loading?: boolean;
+  /** Icon on the left side */
   leftIcon?: keyof typeof Ionicons.glyphMap;
+  /** Icon on the right side */
   rightIcon?: keyof typeof Ionicons.glyphMap;
+  /** Button label */
   children: string;
 }
 
+/**
+ * Button component with design system styling
+ *
+ * Variants:
+ * - primary: Filled with brand color (default)
+ * - secondary: Outlined with brand color
+ * - ghost: Transparent with text
+ * - danger: Filled with error color
+ * - success: Filled with success color
+ */
 export function Button({
   variant = 'primary',
   size = 'md',
@@ -37,25 +55,44 @@ export function Button({
 }: ButtonProps) {
   const theme = useTheme();
 
-  const sizeStyles = {
-    sm: { height: 36, paddingHorizontal: spacing.md, iconSize: 16 },
-    md: { height: 48, paddingHorizontal: spacing.lg, iconSize: 20 },
-    lg: { height: 56, paddingHorizontal: spacing.xl, iconSize: 24 },
+  // Size configuration with typography mapping
+  const sizeConfig = {
+    sm: {
+      height: 40,
+      paddingHorizontal: spacing.lg,
+      iconSize: 16,
+      iconGap: spacing.xs,
+      typography: typography.sizes.buttonSmall,
+    },
+    md: {
+      height: 52,
+      paddingHorizontal: spacing.xl,
+      iconSize: 20,
+      iconGap: spacing.sm,
+      typography: typography.sizes.button,
+    },
+    lg: {
+      height: 60,
+      paddingHorizontal: spacing['2xl'],
+      iconSize: 22,
+      iconGap: spacing.sm,
+      typography: typography.sizes.buttonLarge,
+    },
   };
 
-  const getVariantStyles = (pressed: boolean) => {
-    const baseOpacity = disabled ? 0.5 : pressed ? 0.8 : 1;
+  const getVariantStyles = (pressed: boolean): ViewStyle => {
+    const baseOpacity = disabled ? 0.5 : pressed ? 0.85 : 1;
 
     switch (variant) {
       case 'primary':
         return {
-          backgroundColor: theme.colors.primary[500],
+          backgroundColor: theme.colors.primary[pressed ? 600 : 500],
           borderWidth: 0,
           opacity: baseOpacity,
         };
       case 'secondary':
         return {
-          backgroundColor: 'transparent',
+          backgroundColor: pressed ? theme.colors.primary[500] + '10' : 'transparent',
           borderWidth: 2,
           borderColor: theme.colors.primary[500],
           opacity: baseOpacity,
@@ -68,7 +105,13 @@ export function Button({
         };
       case 'danger':
         return {
-          backgroundColor: theme.colors.error,
+          backgroundColor: pressed ? '#D03040' : theme.colors.error,
+          borderWidth: 0,
+          opacity: baseOpacity,
+        };
+      case 'success':
+        return {
+          backgroundColor: pressed ? '#00B85C' : theme.colors.success,
           borderWidth: 0,
           opacity: baseOpacity,
         };
@@ -79,6 +122,7 @@ export function Button({
     switch (variant) {
       case 'primary':
       case 'danger':
+      case 'success':
         return '#FFFFFF';
       case 'secondary':
         return theme.colors.primary[500];
@@ -87,7 +131,7 @@ export function Button({
     }
   };
 
-  const currentSize = sizeStyles[size];
+  const currentSize = sizeConfig[size];
   const textColor = getTextColor();
 
   return (
@@ -98,11 +142,11 @@ export function Button({
         {
           height: currentSize.height,
           paddingHorizontal: currentSize.paddingHorizontal,
-          borderRadius: borderRadius.button,
+          borderRadius: borderRadius.lg,
         },
         getVariantStyles(pressed),
         fullWidth && styles.fullWidth,
-        style,
+        style as ViewStyle,
       ]}
       {...props}
     >
@@ -115,12 +159,12 @@ export function Button({
               name={leftIcon}
               size={currentSize.iconSize}
               color={textColor}
-              style={styles.leftIcon}
+              style={{ marginRight: currentSize.iconGap }}
             />
           )}
           <Text
-            variant={size === 'sm' ? 'label' : 'body'}
-            style={[styles.text, { color: textColor, fontWeight: '600' }]}
+            variant={size === 'sm' ? 'buttonSmall' : size === 'lg' ? 'buttonLarge' : 'button'}
+            style={{ color: textColor }}
           >
             {children}
           </Text>
@@ -129,7 +173,7 @@ export function Button({
               name={rightIcon}
               size={currentSize.iconSize}
               color={textColor}
-              style={styles.rightIcon}
+              style={{ marginLeft: currentSize.iconGap }}
             />
           )}
         </View>
@@ -150,14 +194,5 @@ const styles = StyleSheet.create({
   content: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  text: {
-    textAlign: 'center',
-  },
-  leftIcon: {
-    marginRight: spacing.sm,
-  },
-  rightIcon: {
-    marginLeft: spacing.sm,
   },
 });

@@ -72,7 +72,7 @@ export function Chip({
             )}
             <Text
               variant="label"
-              style={[chipStyles.label, { color: currentStyles.textColor }]}
+              style={{ color: currentStyles.textColor }}
             >
               {label}
             </Text>
@@ -103,9 +103,6 @@ const chipStyles = StyleSheet.create({
   },
   leftIcon: {
     marginRight: spacing.xs,
-  },
-  label: {
-    fontWeight: '500',
   },
   removeButton: {
     marginLeft: spacing.xs,

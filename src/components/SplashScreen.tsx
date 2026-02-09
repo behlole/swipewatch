@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, G, Defs, LinearGradient as SvgGradient, Stop } from 'react-native-svg';
-import { colors } from '../theme';
+import { colors, typography } from '../theme';
 
 const { width, height } = Dimensions.get('window');
 
@@ -227,16 +227,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   appName: {
-    fontSize: 36,
-    fontWeight: '800',
+    ...typography.sizes.h1,
     color: colors.dark.text.primary,
-    letterSpacing: -0.5,
     marginBottom: 8,
   },
   tagline: {
-    fontSize: 16,
+    ...typography.sizes.body,
     color: colors.dark.text.secondary,
-    letterSpacing: 0.5,
   },
   loadingContainer: {
     position: 'absolute',

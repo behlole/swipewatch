@@ -10,6 +10,7 @@ import {
   getMoodBasedRecommendations,
   getHiddenGemRecommendations,
   getExplorationRecommendations as getExplorationRecs,
+  shouldExcludeContent,
 } from './contentBased';
 import {
   getPopularAmongSimilarFans,
@@ -177,13 +178,30 @@ export async function getPersonalizedRecommendations(
 
 /**
  * Smart ranking that balances relevance with diversity and freshness
+ * Now includes filtering of content based on user dislikes
  */
 function smartRank(recommendations: Recommendation[], profile: UserTasteProfile): Recommendation[] {
   const timeOfDay = getTimeOfDay();
 
   return recommendations
+    // First, filter out content that should be excluded based on dislikes
+    .filter(rec => !shouldExcludeContent({ genre_ids: rec.genreIds }, profile))
     .map(rec => {
       let adjustedScore = rec.score;
+
+      // Apply genre dislike penalty
+      const genreIds = rec.genreIds || [];
+      for (const genreId of genreIds) {
+        const affinity = profile.genreAffinities[genreId];
+        if (affinity) {
+          // Penalize if user has disliked this genre more than liked it
+          const totalInteractions = affinity.likeCount + affinity.dislikeCount;
+          if (totalInteractions >= 3 && affinity.dislikeCount > affinity.likeCount) {
+            const dislikeRatio = affinity.dislikeCount / totalInteractions;
+            adjustedScore *= (1 - dislikeRatio * 0.3); // Up to 30% penalty per disliked genre
+          }
+        }
+      }
 
       // Time-of-day relevance boost
       if (rec.source === 'mood_based') {
@@ -203,11 +221,12 @@ function smartRank(recommendations: Recommendation[], profile: UserTasteProfile)
       }
 
       // Quality floor - ensure highly rated content gets consideration
-      if (rec.voteAverage >= 8.0) {
-        adjustedScore = Math.max(adjustedScore, 0.7);
+      // But only if it doesn't have strongly disliked genres
+      if (rec.voteAverage >= 8.0 && adjustedScore > 0.4) {
+        adjustedScore = Math.max(adjustedScore, 0.65);
       }
 
-      return { ...rec, score: Math.min(1, adjustedScore) };
+      return { ...rec, score: Math.min(1, Math.max(0, adjustedScore)) };
     })
     .sort((a, b) => b.score - a.score);
 }
@@ -232,6 +251,7 @@ export async function getContentRecommendations(
 /**
  * Get recommendations for the swipe deck
  * Mix personalized content with some discovery
+ * Filters out content the user has repeatedly disliked
  */
 export async function getSwipeDeckRecommendations(
   userId: string,
@@ -264,8 +284,13 @@ export async function getSwipeDeckRecommendations(
   const combined = [...personalized, ...discovery];
   const deduped = dedupeRecommendations(combined);
 
+  // Filter out content that should be excluded based on dislikes
+  const filtered = deduped.filter(rec =>
+    !shouldExcludeContent({ genre_ids: rec.genreIds }, profile)
+  );
+
   // Shuffle to mix personalized and discovery
-  return shuffleArray(deduped).slice(0, limit);
+  return shuffleArray(filtered).slice(0, limit);
 }
 
 /**

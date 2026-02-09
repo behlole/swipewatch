@@ -311,6 +311,50 @@ export function hasEnoughDataForRecommendations(profile: UserTasteProfile): bool
 }
 
 /**
+ * Check if user has existing taste profile data (for skipping onboarding)
+ * Returns true if user has at least 3 likes OR has genre affinities set
+ */
+export function hasExistingTasteData(profile: UserTasteProfile): boolean {
+  // Has enough likes
+  if (profile.behavior.totalLikes >= 3) return true;
+
+  // Has genre affinities with actual data (not just defaults)
+  const hasGenreData = Object.values(profile.genreAffinities).some(
+    (affinity) => affinity.likeCount > 0 || affinity.dislikeCount > 0
+  );
+  if (hasGenreData) return true;
+
+  // Has recent liked content
+  if (profile.recentLikedIds.length > 0) return true;
+
+  return false;
+}
+
+/**
+ * Quick check if user has any taste profile document
+ * This is a lightweight check that doesn't fetch the full profile
+ */
+export async function checkHasTasteProfile(userId: string): Promise<boolean> {
+  const profileRef = doc(db, collections.users, userId, 'tasteProfile', 'current');
+
+  try {
+    const snapshot = await getDoc(profileRef);
+    if (!snapshot.exists()) return false;
+
+    const data = snapshot.data();
+    // Check if profile has meaningful data
+    const totalLikes = data.behavior?.totalLikes || 0;
+    const recentLikedCount = data.recentLikedIds?.length || 0;
+    const hasGenreAffinities = Object.keys(data.genreAffinities || {}).length > 0;
+
+    return totalLikes >= 3 || recentLikedCount >= 3 || hasGenreAffinities;
+  } catch (error) {
+    console.warn('Failed to check taste profile:', error);
+    return false;
+  }
+}
+
+/**
  * Get all content IDs the user has interacted with (liked or disliked)
  * Used to filter out content that shouldn't be shown again
  */

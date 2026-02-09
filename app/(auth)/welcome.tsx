@@ -6,13 +6,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Text, Button } from '../../src/components/ui';
 import { Logo } from '../../src/components/Logo';
-import { useTheme, spacing, colors } from '../../src/theme';
+import { spacing, colors } from '../../src/theme';
 
 const { width, height } = Dimensions.get('window');
 
 export default function WelcomeScreen() {
-  const theme = useTheme();
-
   return (
     <View style={styles.container}>
       {/* Background gradient */}
@@ -31,10 +29,10 @@ export default function WelcomeScreen() {
         {/* Logo/Header */}
         <View style={styles.header}>
           <Logo size={100} />
-          <Text variant="display2" align="center" style={styles.appName}>
+          <Text variant="h1" align="center" style={styles.appName}>
             SwipeWatch
           </Text>
-          <Text variant="body" color="secondary" align="center" style={styles.tagline}>
+          <Text variant="bodyLarge" color="secondary" align="center" style={styles.tagline}>
             Find your next favorite movie
           </Text>
         </View>
@@ -101,8 +99,8 @@ function FeatureItem({
         <Ionicons name={icon} size={24} color={color} />
       </View>
       <View style={styles.featureText}>
-        <Text variant="h4" style={styles.featureTitle}>{title}</Text>
-        <Text variant="bodySmall" color="secondary">
+        <Text variant="h5" style={styles.featureTitle}>{title}</Text>
+        <Text variant="bodySmall" color="secondary" style={styles.featureDescription}>
           {description}
         </Text>
       </View>
@@ -145,13 +143,10 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
   },
   appName: {
-    fontWeight: '800',
     marginTop: spacing.lg,
-    letterSpacing: -0.5,
   },
   tagline: {
-    marginTop: spacing.xs,
-    opacity: 0.8,
+    marginTop: spacing.sm,
   },
   features: {
     gap: spacing.lg,
@@ -178,7 +173,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   featureTitle: {
-    marginBottom: 2,
+    marginBottom: spacing.xs,
+  },
+  featureDescription: {
+    lineHeight: 20,
   },
   actions: {
     gap: spacing.md,

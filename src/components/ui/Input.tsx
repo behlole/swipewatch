@@ -11,16 +11,34 @@ import { Text } from './Text';
 import { Ionicons } from '@expo/vector-icons';
 
 interface InputProps extends TextInputProps {
+  /** Label displayed above the input */
   label?: string;
+  /** Error message displayed below the input */
   error?: string;
+  /** Helper text displayed below the input */
+  helper?: string;
+  /** Icon on the left side */
   leftIcon?: keyof typeof Ionicons.glyphMap;
+  /** Icon on the right side */
   rightIcon?: keyof typeof Ionicons.glyphMap;
+  /** Callback for right icon press */
   onRightIconPress?: () => void;
 }
 
+/**
+ * Input component with design system styling
+ *
+ * Features:
+ * - Label with proper typography
+ * - Error and helper text support
+ * - Left/right icons
+ * - Password visibility toggle
+ * - Focus states with brand color
+ */
 export function Input({
   label,
   error,
+  helper,
   leftIcon,
   rightIcon,
   onRightIconPress,
@@ -41,6 +59,11 @@ export function Input({
     return theme.colors.border.default;
   };
 
+  const getBackgroundColor = () => {
+    if (isFocused) return theme.colors.background.secondary;
+    return theme.colors.background.secondary;
+  };
+
   return (
     <View style={styles.container}>
       {label && (
@@ -53,15 +76,16 @@ export function Input({
           styles.inputContainer,
           {
             borderColor: getBorderColor(),
-            backgroundColor: theme.colors.background.secondary,
+            backgroundColor: getBackgroundColor(),
           },
+          isFocused && styles.inputContainerFocused,
         ]}
       >
         {leftIcon && (
           <Ionicons
             name={leftIcon}
             size={20}
-            color={theme.colors.text.tertiary}
+            color={isFocused ? theme.colors.primary[500] : theme.colors.text.tertiary}
             style={styles.leftIcon}
           />
         )}
@@ -70,6 +94,7 @@ export function Input({
             styles.input,
             {
               color: theme.colors.text.primary,
+              ...typography.sizes.body,
             },
             style,
           ]}
@@ -77,12 +102,14 @@ export function Input({
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           secureTextEntry={isPassword && !showPassword}
+          selectionColor={theme.colors.primary[500]}
           {...props}
         />
         {isPassword && (
           <Pressable
             onPress={() => setIsPasswordVisible(!isPasswordVisible)}
             style={styles.rightIcon}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <Ionicons
               name={showPassword ? 'eye-off-outline' : 'eye-outline'}
@@ -96,6 +123,7 @@ export function Input({
             onPress={onRightIconPress}
             style={styles.rightIcon}
             disabled={!onRightIconPress}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <Ionicons
               name={rightIcon}
@@ -106,8 +134,16 @@ export function Input({
         )}
       </View>
       {error && (
-        <Text variant="caption" color="error" style={styles.error}>
-          {error}
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle" size={14} color={theme.colors.error} />
+          <Text variant="caption" color="error" style={styles.errorText}>
+            {error}
+          </Text>
+        </View>
+      )}
+      {helper && !error && (
+        <Text variant="caption" color="tertiary" style={styles.helper}>
+          {helper}
         </Text>
       )}
     </View>
@@ -119,29 +155,41 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   label: {
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderRadius: borderRadius.input,
-    paddingHorizontal: spacing.md,
-    height: 52,
+    borderRadius: borderRadius.lg,
+    paddingHorizontal: spacing.lg,
+    height: 56,
+  },
+  inputContainerFocused: {
+    borderWidth: 2,
   },
   input: {
     flex: 1,
-    ...typography.sizes.body,
     paddingVertical: 0,
+    letterSpacing: 0.2,
   },
   leftIcon: {
-    marginRight: spacing.sm,
+    marginRight: spacing.md,
   },
   rightIcon: {
-    marginLeft: spacing.sm,
+    marginLeft: spacing.md,
     padding: spacing.xs,
   },
-  error: {
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.xs,
+    gap: spacing.xs,
+  },
+  errorText: {
+    flex: 1,
+  },
+  helper: {
     marginTop: spacing.xs,
   },
 });

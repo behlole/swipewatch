@@ -76,8 +76,8 @@ export function Badge({ children, variant = 'default', size = 'md' }: BadgeProps
       ]}
     >
       <Text
-        variant={size === 'sm' ? 'captionSmall' : 'caption'}
-        style={[styles.text, { color: variantStyles.textColor }]}
+        variant={size === 'sm' ? 'labelSmall' : 'label'}
+        style={{ color: variantStyles.textColor }}
       >
         {children}
       </Text>
@@ -90,8 +90,5 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  text: {
-    fontWeight: '600',
   },
 });

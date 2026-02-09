@@ -1,18 +1,21 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, StyleSheet, KeyboardAvoidingView, Platform, Dimensions, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Text, Button, Input } from '../../src/components/ui';
-import { useTheme, spacing } from '../../src/theme';
+import { LogoSimple } from '../../src/components/Logo';
+import { spacing, colors } from '../../src/theme';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import { signInSchema, SignInFormData } from '../../src/lib/validation';
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable } from 'react-native';
 
+const { width, height } = Dimensions.get('window');
+
 export default function SignInScreen() {
-  const theme = useTheme();
   const { signIn } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -36,7 +39,6 @@ export default function SignInScreen() {
       console.log('[SignIn] Starting sign in...');
       await signIn(data.email, data.password);
       console.log('[SignIn] Sign in completed successfully');
-      // Navigation is handled automatically by _layout.tsx based on auth state
     } catch (err: any) {
       console.log('[SignIn] Sign in failed:', err.code, err.message);
       const message = getFirebaseErrorMessage(err.code);
@@ -46,103 +48,129 @@ export default function SignInScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background.primary }]}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
-          </Pressable>
-          <Text variant="h1">Welcome back</Text>
-          <Text variant="body" color="secondary" style={styles.subtitle}>
-            Sign in to continue
-          </Text>
-        </View>
+    <View style={styles.container}>
+      {/* Background */}
+      <LinearGradient
+        colors={['#1A0505', '#0D0D0D', '#0D0D0D']}
+        style={StyleSheet.absoluteFill}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 0.3 }}
+      />
+      <View style={styles.decorativeCircle} />
 
-        {/* Form */}
-        <View style={styles.form}>
-          {error && (
-            <View style={[styles.errorBox, { backgroundColor: theme.colors.accent.nopeBg }]}>
-              <Text variant="bodySmall" color="error">
-                {error}
+      <SafeAreaView style={styles.safeArea}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardView}
+        >
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            {/* Header */}
+            <View style={styles.header}>
+              <Pressable onPress={() => router.back()} style={styles.backButton}>
+                <View style={styles.backButtonCircle}>
+                  <Ionicons name="arrow-back" size={20} color={colors.dark.text.primary} />
+                </View>
+              </Pressable>
+
+              <View style={styles.logoContainer}>
+                <LogoSimple size={48} />
+              </View>
+
+              <Text variant="h2" style={styles.title}>Welcome back</Text>
+              <Text variant="bodyLarge" color="secondary" style={styles.subtitle}>
+                Sign in to continue watching
               </Text>
             </View>
-          )}
 
-          <Controller
-            control={control}
-            name="email"
-            render={({ field: { onChange, value, onBlur } }) => (
-              <Input
-                label="Email"
-                placeholder="your@email.com"
-                value={value}
-                onChangeText={onChange}
-                onBlur={onBlur}
-                error={errors.email?.message}
-                autoCapitalize="none"
-                keyboardType="email-address"
-                autoComplete="email"
-                leftIcon="mail-outline"
+            {/* Form */}
+            <View style={styles.form}>
+              {error && (
+                <View style={styles.errorBox}>
+                  <Ionicons name="alert-circle" size={18} color={colors.error} />
+                  <Text variant="bodySmall" color="error" style={styles.errorText}>
+                    {error}
+                  </Text>
+                </View>
+              )}
+
+              <Controller
+                control={control}
+                name="email"
+                render={({ field: { onChange, value, onBlur } }) => (
+                  <Input
+                    label="Email"
+                    placeholder="your@email.com"
+                    value={value}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    error={errors.email?.message}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    autoComplete="email"
+                    leftIcon="mail-outline"
+                  />
+                )}
               />
-            )}
-          />
 
-          <Controller
-            control={control}
-            name="password"
-            render={({ field: { onChange, value, onBlur } }) => (
-              <Input
-                label="Password"
-                placeholder="Enter your password"
-                value={value}
-                onChangeText={onChange}
-                onBlur={onBlur}
-                error={errors.password?.message}
-                secureTextEntry
-                autoComplete="password"
-                leftIcon="lock-closed-outline"
+              <Controller
+                control={control}
+                name="password"
+                render={({ field: { onChange, value, onBlur } }) => (
+                  <Input
+                    label="Password"
+                    placeholder="Enter your password"
+                    value={value}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    error={errors.password?.message}
+                    secureTextEntry
+                    autoComplete="password"
+                    leftIcon="lock-closed-outline"
+                  />
+                )}
               />
-            )}
-          />
 
-          <Pressable
-            onPress={() => router.push('/(auth)/forgot-password')}
-            style={styles.forgotPassword}
-          >
-            <Text variant="bodySmall" color="secondary">
-              Forgot password?
-            </Text>
-          </Pressable>
-        </View>
+              <Pressable
+                onPress={() => router.push('/(auth)/forgot-password')}
+                style={styles.forgotPassword}
+              >
+                <Text variant="label" style={styles.forgotPasswordText}>
+                  Forgot password?
+                </Text>
+              </Pressable>
+            </View>
 
-        {/* Actions */}
-        <View style={styles.actions}>
-          <Button
-            fullWidth
-            onPress={handleSubmit(onSubmit)}
-            loading={isSubmitting}
-          >
-            Sign In
-          </Button>
-        </View>
+            {/* Actions */}
+            <View style={styles.actions}>
+              <Button
+                fullWidth
+                onPress={handleSubmit(onSubmit)}
+                loading={isSubmitting}
+                style={styles.submitButton}
+              >
+                Sign In
+              </Button>
+            </View>
 
-        {/* Footer */}
-        <View style={styles.footer}>
-          <Text variant="bodySmall" color="secondary">
-            Don't have an account?{' '}
-          </Text>
-          <Pressable onPress={() => router.push('/(auth)/sign-up')}>
-            <Text variant="bodySmall" style={{ color: theme.colors.primary[500], fontWeight: '600' }}>
-              Sign up
-            </Text>
-          </Pressable>
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+            {/* Footer */}
+            <View style={styles.footer}>
+              <Text variant="bodySmall" color="secondary">
+                Don't have an account?{' '}
+              </Text>
+              <Pressable onPress={() => router.push('/(auth)/sign-up')}>
+                <Text variant="label" style={styles.linkText}>
+                  Sign up
+                </Text>
+              </Pressable>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </View>
   );
 }
 
@@ -164,40 +192,94 @@ function getFirebaseErrorMessage(code: string): string {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: colors.dark.background.primary,
+  },
+  decorativeCircle: {
+    position: 'absolute',
+    top: -height * 0.1,
+    right: -width * 0.2,
+    width: width * 0.6,
+    height: width * 0.6,
+    borderRadius: width * 0.3,
+    backgroundColor: colors.primary[500],
+    opacity: 0.06,
+  },
+  safeArea: {
+    flex: 1,
   },
   keyboardView: {
     flex: 1,
+  },
+  scrollContent: {
     padding: spacing.screenPadding,
+    flexGrow: 1,
   },
   header: {
-    marginBottom: spacing['2xl'],
+    marginBottom: spacing.xl,
   },
   backButton: {
     marginBottom: spacing.lg,
-    padding: spacing.xs,
-    marginLeft: -spacing.xs,
+  },
+  backButtonCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.dark.background.secondary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.dark.border.subtle,
+  },
+  logoContainer: {
+    marginBottom: spacing.lg,
+  },
+  title: {
+    marginBottom: spacing.xs,
   },
   subtitle: {
     marginTop: spacing.xs,
   },
   form: {
-    gap: spacing.lg,
+    gap: spacing.md,
   },
   errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
     padding: spacing.md,
-    borderRadius: spacing.sm,
+    borderRadius: 12,
+    backgroundColor: colors.accent.nopeBg,
+    borderWidth: 1,
+    borderColor: colors.error + '30',
+  },
+  errorText: {
+    flex: 1,
   },
   forgotPassword: {
     alignSelf: 'flex-end',
+    paddingVertical: spacing.xs,
+  },
+  forgotPasswordText: {
+    color: colors.primary[500],
   },
   actions: {
-    marginTop: spacing['2xl'],
+    marginTop: spacing.xl,
     gap: spacing.md,
+  },
+  submitButton: {
+    shadowColor: colors.primary[500],
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
     marginTop: 'auto',
-    paddingVertical: spacing.lg,
+    paddingVertical: spacing.xl,
+  },
+  linkText: {
+    color: colors.primary[500],
   },
 });

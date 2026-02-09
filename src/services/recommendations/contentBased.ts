@@ -566,7 +566,88 @@ export async function getGenreBasedRecommendations(
 }
 
 /**
+ * Calculate dislike penalty for genres the user has repeatedly disliked
+ * Returns a multiplier between 0.3 (heavily disliked) and 1.0 (no penalty)
+ */
+function calculateDislikePenalty(
+  movieGenres: number[],
+  profile: UserTasteProfile
+): number {
+  let dislikePenalty = 1.0;
+  let strongDislikeCount = 0;
+
+  for (const genreId of movieGenres) {
+    const affinity = profile.genreAffinities[genreId];
+    if (affinity) {
+      // If user has disliked this genre more than liked it
+      if (affinity.dislikeCount > affinity.likeCount && affinity.dislikeCount >= 2) {
+        const dislikeRatio = affinity.dislikeCount / (affinity.likeCount + affinity.dislikeCount);
+        // Strong dislike (>70% dislikes) - heavy penalty
+        if (dislikeRatio > 0.7) {
+          strongDislikeCount++;
+          dislikePenalty *= 0.5; // 50% penalty per strongly disliked genre
+        } else if (dislikeRatio > 0.5) {
+          // Moderate dislike
+          dislikePenalty *= 0.75;
+        }
+      }
+      // If affinity score is very low (< 0.3), also penalize
+      if (affinity.score < 0.3 && (affinity.likeCount + affinity.dislikeCount) >= 3) {
+        dislikePenalty *= 0.8;
+      }
+    }
+  }
+
+  // If multiple strongly disliked genres, apply floor
+  if (strongDislikeCount >= 2) {
+    dislikePenalty = Math.min(dislikePenalty, 0.3);
+  }
+
+  return Math.max(0.3, dislikePenalty);
+}
+
+/**
+ * Check if content should be filtered out completely based on user dislikes
+ * Returns true if content should be excluded
+ */
+export function shouldExcludeContent(
+  movie: { genre_ids?: number[] },
+  profile: UserTasteProfile
+): boolean {
+  const movieGenres = movie.genre_ids || [];
+
+  // Count how many genres are strongly disliked
+  let stronglyDislikedCount = 0;
+  let totalGenresWithData = 0;
+
+  for (const genreId of movieGenres) {
+    const affinity = profile.genreAffinities[genreId];
+    if (affinity && (affinity.likeCount + affinity.dislikeCount) >= 3) {
+      totalGenresWithData++;
+      // If >75% of interactions are dislikes, it's strongly disliked
+      const dislikeRatio = affinity.dislikeCount / (affinity.likeCount + affinity.dislikeCount);
+      if (dislikeRatio > 0.75) {
+        stronglyDislikedCount++;
+      }
+    }
+  }
+
+  // Exclude if ALL genres with data are strongly disliked
+  if (totalGenresWithData > 0 && stronglyDislikedCount === totalGenresWithData) {
+    return true;
+  }
+
+  // Exclude if majority of genres (>= 2) are strongly disliked
+  if (stronglyDislikedCount >= 2 && stronglyDislikedCount >= movieGenres.length / 2) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Enhanced similarity score with multiple factors
+ * Now includes negative signals from dislikes
  */
 function calculateSimilarityScore(
   movie: {
@@ -584,17 +665,24 @@ function calculateSimilarityScore(
 ): number {
   const { temporalWeight = 1.0, isMoodBased = false, isExploration = false } = options;
 
+  const movieGenres = movie.genre_ids || [];
+
+  // Early exit: if content should be excluded based on dislikes, give very low score
+  if (shouldExcludeContent(movie, profile)) {
+    return 0.1;
+  }
+
   let weightedScore = 0;
   let totalWeight = 0;
 
-  // 1. Genre affinity (weight: 35%)
-  const movieGenres = movie.genre_ids || [];
+  // 1. Genre affinity (weight: 35%) - Now considers both likes AND dislikes
   let genreScore = 0;
   let genreMatches = 0;
 
   for (const genreId of movieGenres) {
     const affinity = profile.genreAffinities[genreId];
-    if (affinity && affinity.likeCount > 0) {
+    if (affinity) {
+      // Use the actual affinity score which accounts for both likes and dislikes
       genreScore += affinity.score;
       genreMatches++;
     }
@@ -602,6 +690,10 @@ function calculateSimilarityScore(
 
   if (genreMatches > 0) {
     weightedScore += (genreScore / genreMatches) * 0.35;
+    totalWeight += 0.35;
+  } else {
+    // No genre data - neutral score
+    weightedScore += 0.5 * 0.35;
     totalWeight += 0.35;
   }
 
@@ -645,6 +737,10 @@ function calculateSimilarityScore(
 
   // Calculate base score
   let finalScore = totalWeight > 0 ? weightedScore / totalWeight : 0.5;
+
+  // Apply dislike penalty (NEW)
+  const dislikePenalty = calculateDislikePenalty(movieGenres, profile);
+  finalScore *= dislikePenalty;
 
   // Apply multipliers
   finalScore *= temporalWeight;

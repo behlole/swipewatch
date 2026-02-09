@@ -11,6 +11,7 @@ import {
   onAuthStateChange,
   getUserDocument,
   updateOnboardingComplete,
+  checkHasTasteProfile,
 } from '../../../services/firebase';
 
 export function useAuth() {
@@ -77,8 +78,21 @@ export function useAuth() {
 
               // Check if user has completed onboarding from Firebase
               // For existing users without the field, assume completed (they used app before this feature)
-              const hasCompleted = userDoc?.hasCompletedOnboarding === true ||
+              let hasCompleted = userDoc?.hasCompletedOnboarding === true ||
                 (userDoc && userDoc.hasCompletedOnboarding === undefined);
+
+              // If not marked complete, check for existing taste data
+              if (!hasCompleted) {
+                const hasTasteData = await checkHasTasteProfile(authUser.uid);
+                if (hasTasteData) {
+                  console.log('[Auth] User has existing taste data, marking onboarding complete');
+                  hasCompleted = true;
+                  // Update Firebase in background
+                  updateOnboardingComplete(authUser.uid).catch((err) =>
+                    console.warn('[Auth] Failed to update onboarding status:', err)
+                  );
+                }
+              }
 
               if (hasCompleted) {
                 setHasCompletedOnboarding(true);
@@ -167,8 +181,23 @@ export function useAuth() {
         const userDoc = await getUserDocument(result.uid);
         // Check if user has completed onboarding
         // For existing users without the field, assume completed (they used app before this feature)
-        const hasCompleted = userDoc?.hasCompletedOnboarding === true ||
+        let hasCompleted = userDoc?.hasCompletedOnboarding === true ||
           (userDoc && userDoc.hasCompletedOnboarding === undefined);
+
+        // Even if onboarding not marked complete, check if user has taste data
+        // This allows users who have swiped to skip onboarding
+        if (!hasCompleted) {
+          console.log('[useAuth] Checking for existing taste profile data...');
+          const hasTasteData = await checkHasTasteProfile(result.uid);
+          if (hasTasteData) {
+            console.log('[useAuth] User has existing taste data, skipping onboarding');
+            hasCompleted = true;
+            // Update Firebase in background
+            updateOnboardingComplete(result.uid).catch((err) =>
+              console.warn('[useAuth] Failed to update onboarding status:', err)
+            );
+          }
+        }
 
         if (hasCompleted) {
           console.log('[useAuth] User has completed onboarding');
@@ -213,15 +242,40 @@ export function useAuth() {
       console.log('[useAuth] Setting authenticated state immediately');
 
       if (isNewUser) {
-        // New user - needs onboarding
-        setIsNewSignup(true);
-        setHasCompletedOnboarding(false);
+        // New user - check if they have taste data (from previous session/device)
+        const hasTasteData = await checkHasTasteProfile(result.uid);
+        if (hasTasteData) {
+          console.log('[useAuth] New Google user has existing taste data, skipping onboarding');
+          setHasCompletedOnboarding(true);
+          setPreferencesOnboarding(true);
+          // Update Firebase in background
+          updateOnboardingComplete(result.uid).catch((err) =>
+            console.warn('[useAuth] Failed to update onboarding status:', err)
+          );
+        } else {
+          // Truly new user - needs onboarding
+          setIsNewSignup(true);
+          setHasCompletedOnboarding(false);
+        }
       } else {
         // Existing user - fetch user document
         try {
           const userDoc = await getUserDocument(result.uid);
-          const hasCompleted = userDoc?.hasCompletedOnboarding === true ||
+          let hasCompleted = userDoc?.hasCompletedOnboarding === true ||
             (userDoc && userDoc.hasCompletedOnboarding === undefined);
+
+          // Check for existing taste data
+          if (!hasCompleted) {
+            const hasTasteData = await checkHasTasteProfile(result.uid);
+            if (hasTasteData) {
+              console.log('[useAuth] Google user has existing taste data, skipping onboarding');
+              hasCompleted = true;
+              // Update Firebase in background
+              updateOnboardingComplete(result.uid).catch((err) =>
+                console.warn('[useAuth] Failed to update onboarding status:', err)
+              );
+            }
+          }
 
           if (hasCompleted) {
             console.log('[useAuth] User has completed onboarding');
