@@ -193,6 +193,65 @@ After the pipeline submits a build:
 
 ---
 
+## Troubleshooting: "Prepare project" build failed
+
+### Why it happens
+
+EAS Build runs the **Prepare project** step on Expo’s servers (Linux). That step runs `expo prebuild` and other setup. If anything in that phase fails (Android resource linking, Gradle, a plugin, or a missing config), EAS reports a single **"Unknown error"** in the terminal. The **real error message** (e.g. `Theme.SplashScreen not found`, manifest merger, missing dependency) is only in the build logs on the Expo site. So the failure *is* in Prepare project; we need the log line to see the exact cause.
+
+If EAS Build is triggered from **GitHub Actions**, the code is uploaded from the Actions runner (no `.env`). If you run **`eas build` on your PC**, the project is uploaded from your machine (OneDrive or path issues can sometimes affect the archive).
+
+### Solution (try in order)
+
+1. **Use the fixes already in the project**
+   - `package.json` has `name` and `version` (required for Expo 54 autolinking).
+   - `expo-build-properties` sets Android SDK 35 and `buildToolsVersion` 35.0.0.
+   - `expo-splash-screen` is explicitly in `app.json` plugins so the splash screen is applied correctly during prebuild.
+
+2. **Run a clean build**
+   ```bash
+   eas build --platform android --profile production --clear-cache --non-interactive
+   ```
+
+3. **Build from GitHub Actions instead of your PC**
+   - Push to `main` and let the workflow run the build (clean Linux checkout).
+   - Or: **Actions** → **EAS Build & Deploy** → **Run workflow** (platform: android, profile: production).
+
+4. **If it still fails: get the real error**
+   - Open the build URL, expand **Prepare project**, copy the **first red error line**, then search it or share it for a targeted fix.
+
+5. **Optional: run doctor and prebuild locally**
+   ```bash
+   npx expo-doctor
+   npx expo prebuild --platform android --clean
+   ```
+
+---
+
+If EAS fails with **"Unknown error. See logs of the Prepare project build phase"**:
+
+1. **Get the real error**  
+   Open the build URL (e.g. `https://expo.dev/accounts/.../builds/...`), expand the **Prepare project** step, and copy the **first red error line**. The terminal only shows a generic message.
+
+2. **Try a clean build**  
+   ```bash
+   eas build --platform android --profile production --clear-cache --non-interactive
+   ```
+
+3. **Expo SDK 54 – common causes**  
+   - **Theme.SplashScreen / resource linking failed**: Often fixed by having `name` and `version` in `package.json` (this project has them). If it still fails, the exact log line is needed.  
+   - **No matching variant**: Dependency or Gradle/AGP version; the log will name the module.  
+   - **Duplicate resources**: e.g. duplicate launcher icons; remove or rename the duplicate.
+
+4. **Check config locally**  
+   ```bash
+   npx expo config --json
+   npx expo-modules-autolinking resolve
+   ```  
+   Autolinking should list many modules (including `expo-splash-screen`), not `modules: []`.
+
+---
+
 ## Tips to increase approval chances
 
 - No crashes; fix reported issues quickly.

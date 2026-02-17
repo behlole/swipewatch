@@ -1,0 +1,57 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <defs>
+    <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F74551" />
+      <stop offset="100%" stop-color="#B20710" />
+    </linearGradient>
+    <linearGradient id="playGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#F0F0F0" />
+    </linearGradient>
+  </defs>
+
+  <!-- Outer circle with swipe effect -->
+  <circle
+    cx="60"
+    cy="60"
+    r="55"
+    fill="none"
+    stroke="url(#logoGrad)"
+    stroke-width="4"
+    stroke-linecap="round"
+    stroke-dasharray="250 100"
+  />
+
+  <!-- Inner filled circle -->
+  <circle cx="60" cy="60" r="45" fill="url(#logoGrad)" />
+
+  <!-- Play button triangle -->
+  <path
+    d="M50 40 L50 80 L85 60 Z"
+    fill="url(#playGrad)"
+  />
+
+  <!-- Swipe arrow hint (right) - like/green -->
+  <g opacity="0.9">
+    <path
+      d="M95 55 L105 60 L95 65"
+      fill="none"
+      stroke="#00D26A"
+      stroke-width="3"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+  </g>
+
+  <!-- Swipe arrow hint (left) - nope/red -->
+  <g opacity="0.9">
+    <path
+      d="M25 55 L15 60 L25 65"
+      fill="none"
+      stroke="#FF4458"
+      stroke-width="3"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+  </g>
+</svg>
