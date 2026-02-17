@@ -64,10 +64,10 @@ jobs:
         continue-on-error: true
 
   # ──────────────────────────────────────────────
-  # Preview Build (on push to main)
+  # Build & Publish to Play Console (on push to main)
   # ──────────────────────────────────────────────
-  preview:
-    name: Preview Build (APK)
+  build-and-publish:
+    name: Build & Publish to Play Console
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/')
     steps:
@@ -89,8 +89,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build preview APK
-        run: eas build --platform android --profile preview --non-interactive
+      - name: Create Google Service Account key
+        run: echo '${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}' > google-service-account.json
+
+      - name: Build production AAB
+        run: eas build --platform android --profile production --non-interactive
+
+      - name: Submit to Google Play
+        run: eas submit --platform android --latest --non-interactive
 
   # ──────────────────────────────────────────────
   # Production Build & Submit (on tag push v*)
