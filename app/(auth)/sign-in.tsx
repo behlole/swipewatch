@@ -36,13 +36,11 @@ export default function SignInScreen() {
     setError(null);
     setIsSubmitting(true);
     try {
-      console.log('[SignIn] Starting sign in...');
       await signIn(data.email, data.password);
-      console.log('[SignIn] Sign in completed successfully');
     } catch (err: any) {
-      console.log('[SignIn] Sign in failed:', err.code, err.message);
       const message = getFirebaseErrorMessage(err.code);
       setError(message);
+    } finally {
       setIsSubmitting(false);
     }
   };

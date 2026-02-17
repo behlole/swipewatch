@@ -1,5 +1,10 @@
-import { TestIds } from 'react-native-google-mobile-ads';
+import { nativeAdsModule } from './nativeAdsGate';
 import { AdPlacement, FrequencyCapConfig } from './types';
+
+// Fallback test IDs when native module not available (Expo Go) or for test ads
+const TEST_BANNER = 'ca-app-pub-3940256099942544/6300978111';
+const TEST_INTERSTITIAL = 'ca-app-pub-3940256099942544/1033173712';
+const TestIds = nativeAdsModule?.TestIds ?? { BANNER: TEST_BANNER, INTERSTITIAL: TEST_INTERSTITIAL };
 
 // Set EXPO_PUBLIC_USE_TEST_ADS=true in .env to use test ads
 // Set EXPO_PUBLIC_USE_TEST_ADS=false to use real production ads

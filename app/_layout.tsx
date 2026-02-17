@@ -6,7 +6,6 @@ import * as ExpoSplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
-import mobileAds from 'react-native-google-mobile-ads';
 import 'react-native-reanimated';
 
 import { queryClient } from '../src/lib/queryClient';
@@ -14,6 +13,7 @@ import { useAuth } from '../src/features/auth/hooks/useAuth';
 import { colors } from '../src/theme';
 import { SplashScreen } from '../src/components/SplashScreen';
 import { Logo } from '../src/components/Logo';
+import { isNativeAdsAvailable, nativeAdsModule } from '../src/features/ads/nativeAdsGate';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -29,17 +29,17 @@ export default function RootLayout() {
   const [appReady, setAppReady] = useState(false);
 
   useEffect(() => {
-    // Initialize Google Mobile Ads SDK
-    mobileAds()
+    // Initialize Google Mobile Ads SDK only when native module is present (development build).
+    // In Expo Go / web the module isn't available - app runs without ads.
+    if (!isNativeAdsAvailable || !nativeAdsModule?.default) {
+      setAdsInitialized(true);
+      return;
+    }
+    nativeAdsModule
+      .default()
       .initialize()
-      .then((adapterStatuses) => {
-        console.log('[Ads] Mobile Ads SDK initialized:', adapterStatuses);
-        setAdsInitialized(true);
-      })
-      .catch((error) => {
-        console.warn('[Ads] Failed to initialize Mobile Ads SDK:', error);
-        setAdsInitialized(true); // Continue even if ads fail
-      });
+      .then(() => setAdsInitialized(true))
+      .catch(() => setAdsInitialized(true));
   }, []);
 
   useEffect(() => {

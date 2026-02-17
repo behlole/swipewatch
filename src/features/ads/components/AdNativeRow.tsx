@@ -1,6 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, StyleSheet, Pressable } from 'react-native';
-import { BannerAd, BannerAdSize } from 'react-native-google-mobile-ads';
+import { View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../theme';
 import { Text, Card } from '../../../components/ui';
@@ -8,6 +7,7 @@ import { AdPlaceholder } from './AdPlaceholder';
 import { useAdStore } from '../stores/adStore';
 import { AD_UNIT_IDS } from '../constants';
 import { AdPlacement } from '../types';
+import { isNativeAdsAvailable, nativeAdsModule } from '../nativeAdsGate';
 
 interface AdNativeRowProps {
   placement: AdPlacement;
@@ -19,27 +19,21 @@ export function AdNativeRow({ placement }: AdNativeRowProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
 
-  // Simplified: always show ads for debugging
-  console.log(`[AdNativeRow] Rendering for ${placement}, isPremium: ${isPremium}, adsEnabled: ${adsEnabled}`);
-
   const handleAdLoaded = useCallback(() => {
-    console.log(`[AdNativeRow] Ad loaded successfully for ${placement}`);
     setIsLoading(false);
     setHasError(false);
     recordImpression(placement);
   }, [placement, recordImpression]);
 
   const handleAdFailed = useCallback((error: Error) => {
-    console.log(`[AdNativeRow] Ad failed for ${placement}:`, error.message);
     setIsLoading(false);
     setHasError(true);
   }, [placement]);
 
-  // Skip if premium user
-  if (isPremium) {
-    return null;
-  }
+  if (!isNativeAdsAvailable || !nativeAdsModule) return null;
+  if (isPremium) return null;
 
+  const { BannerAd, BannerAdSize } = nativeAdsModule;
   const unitId = AD_UNIT_IDS[placement];
 
   return (

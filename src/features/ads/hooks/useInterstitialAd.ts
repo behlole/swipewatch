@@ -1,12 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import {
-  InterstitialAd,
-  AdEventType,
-  TestIds,
-} from 'react-native-google-mobile-ads';
 import { useAdStore } from '../stores/adStore';
 import { AD_UNIT_IDS } from '../constants';
 import { AdPlacement } from '../types';
+import { isNativeAdsAvailable, nativeAdsModule } from '../nativeAdsGate';
 
 interface UseInterstitialAdOptions {
   placement: AdPlacement;
@@ -29,15 +25,19 @@ export function useInterstitialAd({
     useAdStore();
   const [isReady, setIsReady] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const adRef = useRef<InterstitialAd | null>(null);
+  const adRef = useRef<{ show: () => void } | null>(null);
 
   useEffect(() => {
-    // Don't load ads for premium users
+    if (!isNativeAdsAvailable || !nativeAdsModule) {
+      setIsLoading(false);
+      return;
+    }
     if (isPremium || !adsEnabled) {
       setIsLoading(false);
       return;
     }
 
+    const { InterstitialAd, AdEventType } = nativeAdsModule;
     const unitId = AD_UNIT_IDS[placement];
     const interstitial = InterstitialAd.createForAdRequest(unitId, {
       requestNonPersonalizedAdsOnly: true,
@@ -57,7 +57,6 @@ export function useInterstitialAd({
         setIsReady(false);
         resetSwipeCount();
         onClose?.();
-        // Preload next ad
         interstitial.load();
         setIsLoading(true);
       }
@@ -68,12 +67,10 @@ export function useInterstitialAd({
       (error) => {
         setIsReady(false);
         setIsLoading(false);
-        console.warn('[useInterstitialAd] Error:', error);
         onError?.(new Error(String(error)));
       }
     );
 
-    // Start loading
     interstitial.load();
     adRef.current = interstitial;
 
@@ -85,23 +82,25 @@ export function useInterstitialAd({
   }, [isPremium, adsEnabled, placement, onClose, onError, resetSwipeCount]);
 
   const showAd = useCallback((): boolean => {
+    if (!isNativeAdsAvailable || !nativeAdsModule) return false;
     if (!isReady || !adRef.current || isPremium || !adsEnabled) {
       return false;
     }
-
     if (!canShowAd(placement)) {
       return false;
     }
-
     try {
       recordImpression(placement);
       adRef.current.show();
       return true;
-    } catch (error) {
-      console.warn('[useInterstitialAd] Failed to show ad:', error);
+    } catch {
       return false;
     }
   }, [isReady, isPremium, adsEnabled, canShowAd, recordImpression, placement]);
+
+  if (!isNativeAdsAvailable) {
+    return { showAd: () => false, isReady: false, isLoading: false };
+  }
 
   return {
     showAd,
