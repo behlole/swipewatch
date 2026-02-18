@@ -9,7 +9,10 @@
     "r": "npx expo run:android",
     "ios": "npx expo run:ios",
     "web": "npx expo start --web",
-    "android": "npx expo run:android"
+    "android": "npx expo run:android",
+    "prebuild": "npx expo prebuild --platform android --clean",
+    "build:local:apk": "node scripts/build-android.js apk",
+    "build:local:aab": "node scripts/build-android.js aab"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
