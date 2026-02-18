@@ -7,6 +7,7 @@ import { Text, Button, Chip } from '../../src/components/ui';
 import { useTheme, spacing, borderRadius } from '../../src/theme';
 import { usePreferencesStore, ALL_GENRES } from '../../src/stores/preferencesStore';
 import { useAuthStore } from '../../src/features/auth/stores/authStore';
+import { useAuth } from '../../src/features/auth/hooks/useAuth';
 
 const CONTENT_TYPES = [
   { key: 'movie' as const, label: 'Movies', icon: 'film-outline' },
@@ -23,22 +24,23 @@ export default function GenresScreen() {
     setPreferredContentType,
   } = usePreferencesStore();
   const isNewSignup = useAuthStore((state) => state.isNewSignup);
+  const { completeOnboarding } = useAuth();
 
   const handleContinue = () => {
-    // Only show taste screen for new signups
     if (isNewSignup) {
       router.push('/(onboarding)/taste');
     } else {
-      router.push('/(onboarding)/tutorial');
+      completeOnboarding();
+      setTimeout(() => router.replace('/(tabs)'), 100);
     }
   };
 
   const handleSkip = () => {
-    // Only show taste screen for new signups
     if (isNewSignup) {
       router.push('/(onboarding)/taste');
     } else {
-      router.push('/(onboarding)/tutorial');
+      completeOnboarding();
+      setTimeout(() => router.replace('/(tabs)'), 100);
     }
   };
 

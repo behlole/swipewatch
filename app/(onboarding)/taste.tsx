@@ -1,7 +1,7 @@
-import React from 'react';
 import { router } from 'expo-router';
-import { TasteOnboarding } from '../../src/features/onboarding/components';
+import React from 'react';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
+import { TasteOnboarding } from '../../src/features/onboarding/components';
 
 export default function TasteScreen() {
   const { completeOnboarding } = useAuth();
