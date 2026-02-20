@@ -1,5 +1,24 @@
 import { ScrollViewStyleReset } from 'expo-router/html';
 
+// SEO and app metadata for Swipewatch (web-only)
+const SEO = {
+  title: 'Swipewatch – Discover Movies & Shows, Swipe to Save',
+  description:
+    'Swipewatch helps you discover movies and TV shows you’ll love. Swipe to like or skip, watch trailers, build your watchlist, and share with groups. Your next favorite is one swipe away.',
+  keywords:
+    'movies, TV shows, discover, swipe, watchlist, trailers, watch together, movie app, TV app, Swipewatch',
+  baseUrl: (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_WEB_URL) || 'https://swipewatch.app',
+  get image() {
+    return `${this.baseUrl}/assets/images/logo.png`;
+  },
+  get url() {
+    return `${this.baseUrl}/`;
+  },
+  siteName: 'Swipewatch',
+  themeColor: '#0D0D0D',
+  twitterHandle: '@swipewatch',
+};
+
 // This file is web-only and used to configure the root HTML for every
 // web page during static rendering.
 // The contents of this function only run in Node.js environments and
@@ -12,6 +31,29 @@ export default function Root({ children }: { children: React.ReactNode }) {
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
 
+        {/* Primary SEO */}
+        <title>{SEO.title}</title>
+        <meta name="description" content={SEO.description} />
+        <meta name="keywords" content={SEO.keywords} />
+        <meta name="theme-color" content={SEO.themeColor} />
+        <link rel="canonical" href={SEO.url} />
+
+        {/* Open Graph */}
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content={SEO.siteName} />
+        <meta property="og:title" content={SEO.title} />
+        <meta property="og:description" content={SEO.description} />
+        <meta property="og:image" content={SEO.image} />
+        <meta property="og:url" content={SEO.url} />
+        <meta property="og:locale" content="en_US" />
+
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:site" content={SEO.twitterHandle} />
+        <meta name="twitter:title" content={SEO.title} />
+        <meta name="twitter:description" content={SEO.description} />
+        <meta name="twitter:image" content={SEO.image} />
+
         {/* 
           Disable body scrolling on web. This makes ScrollView components work closer to how they do on native. 
           However, body scrolling is often nice to have for mobile web. If you want to enable it, remove this line.
@@ -20,7 +62,6 @@ export default function Root({ children }: { children: React.ReactNode }) {
 
         {/* Using raw CSS styles as an escape-hatch to ensure the background color never flickers in dark-mode. */}
         <style dangerouslySetInnerHTML={{ __html: responsiveBackground }} />
-        {/* Add any additional <head> elements that you want globally available on web... */}
       </head>
       <body>{children}</body>
     </html>
