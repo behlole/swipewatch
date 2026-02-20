@@ -12,7 +12,7 @@ import 'react-native-reanimated';
 
 import { queryClient } from '../src/lib/queryClient';
 import { useAuth } from '../src/features/auth/hooks/useAuth';
-import { colors } from '../src/theme';
+import { useTheme } from '../src/theme';
 import { SplashScreen } from '../src/components/SplashScreen';
 import { Logo } from '../src/components/Logo';
 import { isNativeAdsAvailable, nativeAdsModule } from '../src/features/ads/nativeAdsGate';
@@ -92,13 +92,13 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>
         <RootLayoutNav />
-        <StatusBar style="light" />
       </QueryClientProvider>
     </GestureHandlerRootView>
   );
 }
 
 function RootLayoutNav() {
+  const theme = useTheme();
   const { isAuthenticated, isLoading, hasCompletedOnboarding, isNewSignup } = useAuth();
   const segments = useSegments();
 
@@ -143,29 +143,34 @@ function RootLayoutNav() {
 
   if (isLoading) {
     return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: 'center',
-          alignItems: 'center',
-          backgroundColor: colors.dark.background.primary,
-        }}
-      >
-        <Logo size={60} />
-      </View>
+      <>
+        <StatusBar style={theme.isDark ? 'light' : 'dark'} />
+        <View
+          style={{
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+            backgroundColor: theme.colors.background.primary,
+          }}
+        >
+          <Logo size={60} />
+        </View>
+      </>
     );
   }
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        contentStyle: {
-          backgroundColor: colors.dark.background.primary,
-        },
-        animation: 'slide_from_right',
-      }}
-    >
+    <>
+      <StatusBar style={theme.isDark ? 'light' : 'dark'} />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: {
+            backgroundColor: theme.colors.background.primary,
+          },
+          animation: 'slide_from_right',
+        }}
+      >
       <Stack.Screen name="(auth)" />
       <Stack.Screen name="(onboarding)" />
       <Stack.Screen name="(tabs)" />
@@ -178,5 +183,6 @@ function RootLayoutNav() {
         }}
       />
     </Stack>
+    </>
   );
 }

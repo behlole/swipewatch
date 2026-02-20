@@ -9,6 +9,7 @@ import {
   AppState,
   AppStateStatus,
   useWindowDimensions,
+  Platform,
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -25,6 +26,9 @@ import { Image } from 'expo-image';
 
 // Minimum watch time in ms before considering it a "viewed" trailer
 const MIN_VIEW_DURATION_MS = 3000;
+
+// Match tab bar height from app/(tabs)/_layout.tsx so content doesn't sit under it
+const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 88 : 64;
 
 interface TrailerItem {
   id: number;
@@ -49,6 +53,11 @@ const trailerCache: Map<number, TrailerItem> = new Map();
 export function TrailerFeed({ onClose }: TrailerFeedProps) {
   const theme = useTheme();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  // When used as tab, reserve space for tab bar; when modal (onClose), use full height
+  const contentHeight = onClose
+    ? screenHeight
+    : Math.max(200, screenHeight - TAB_BAR_HEIGHT);
+  const contentWidth = screenWidth;
   const isLandscape = screenWidth > screenHeight;
   const firebaseUser = useAuthStore((state) => state.firebaseUser);
   const [trailers, setTrailers] = useState<TrailerItem[]>([]);
@@ -60,6 +69,8 @@ export function TrailerFeed({ onClose }: TrailerFeedProps) {
   const [dislikedIds, setDislikedIds] = useState<Set<number>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMorePages, setHasMorePages] = useState(true);
+  const [isMuted, setIsMuted] = useState(true);
+  const [playAfterReady, setPlayAfterReady] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const loadedMovieIds = useRef<Set<number>>(new Set());
   const viewStartTime = useRef<number>(Date.now());
@@ -85,6 +96,13 @@ export function TrailerFeed({ onClose }: TrailerFeedProps) {
   // Track when video starts playing
   useEffect(() => {
     viewStartTime.current = Date.now();
+  }, [currentIndex]);
+
+  // Reel-style: only send play after iframe is ready; reset when changing slide
+  useEffect(() => {
+    setPlayAfterReady(false);
+    const fallback = setTimeout(() => setPlayAfterReady(true), 1500);
+    return () => clearTimeout(fallback);
   }, [currentIndex]);
 
   // Process skipped video (scrolled past without liking)
@@ -356,23 +374,25 @@ export function TrailerFeed({ onClose }: TrailerFeedProps) {
   }, [currentIndex, trailers, likedIds, processSkippedVideo]);
 
   const viewabilityConfig = useRef({
-    itemVisiblePercentThreshold: 50,
+    itemVisiblePercentThreshold: 80,
   }).current;
+
+  const bottomInset = onClose ? spacing.lg : TAB_BAR_HEIGHT + spacing.md;
 
   const renderItem = useCallback(({ item, index }: { item: TrailerItem; index: number }) => {
     const isCurrentItem = index === currentIndex;
-    const shouldPlay = isCurrentItem && isScreenFocused;
+    const shouldPlay = isCurrentItem && isScreenFocused && playAfterReady;
     const isLiked = likedIds.has(item.id);
     const isDisliked = dislikedIds.has(item.id);
 
-    // Optimized for landscape - video fills most of the screen
-    // In landscape: screenWidth is the longer dimension, screenHeight is the shorter
-    const playerHeight = screenHeight * 0.9;
+    // Use content area for dimensions; enforce minimum 200px (YouTube iframe requirement)
+    const rawHeight = Math.min(contentHeight * 0.85, contentWidth * (9 / 16));
+    const playerHeight = Math.max(200, rawHeight);
     const playerWidth = playerHeight * (16 / 9);
-    const isInLandscape = screenWidth > screenHeight;
+    const isInLandscape = contentWidth > contentHeight;
 
     return (
-      <View style={[styles.itemContainer, { width: screenWidth, height: screenHeight }]}>
+      <View style={[styles.itemContainer, { width: contentWidth, height: contentHeight }]}>
         {/* Background poster as fallback */}
         {item.posterPath && (
           <Image
@@ -383,20 +403,24 @@ export function TrailerFeed({ onClose }: TrailerFeedProps) {
           />
         )}
 
-        {/* YouTube Player - Centered and maximized for landscape */}
+        {/* Reel-style: only mount YouTube player for the current item so it can autoplay */}
         <View style={[
           styles.playerContainer,
           {
-            top: screenHeight * 0.05,
-            left: isInLandscape ? (screenWidth - playerWidth) / 2 : 0,
+            top: contentHeight * 0.04,
+            left: isInLandscape ? (contentWidth - playerWidth) / 2 : 0,
           }
         ]}>
-          {item.trailerKey && (
+          {item.trailerKey && isCurrentItem ? (
             <YoutubePlayer
-              height={playerHeight}
-              width={isInLandscape ? playerWidth : screenWidth}
+              key={`${item.trailerKey}-${currentIndex}`}
+              height={Math.round(playerHeight)}
+              width={Math.round(isInLandscape ? playerWidth : contentWidth)}
               videoId={item.trailerKey}
               play={shouldPlay}
+              mute={isMuted}
+              forceAndroidAutoplay={true}
+              onReady={() => setPlayAfterReady(true)}
               onChangeState={(state: string) => {
                 // Handle video state changes if needed
               }}
@@ -410,7 +434,18 @@ export function TrailerFeed({ onClose }: TrailerFeedProps) {
                 rel: false,
               }}
             />
-          )}
+          ) : item.trailerKey ? (
+            <View style={[styles.posterPlaceholder, { width: Math.round(isInLandscape ? playerWidth : contentWidth), height: Math.round(playerHeight) }]}>
+              <Image
+                source={{ uri: getPosterUrl(item.posterPath, 'medium') || '' }}
+                style={StyleSheet.absoluteFill}
+                contentFit="cover"
+              />
+              <View style={styles.posterPlayIcon}>
+                <Ionicons name="play-circle" size={64} color="rgba(255,255,255,0.9)" />
+              </View>
+            </View>
+          ) : null}
         </View>
 
         {/* Gradient overlay on sides for landscape */}
@@ -427,10 +462,10 @@ export function TrailerFeed({ onClose }: TrailerFeedProps) {
           style={styles.rightGradient}
         />
 
-        {/* Movie Info - left side in landscape */}
+        {/* Movie Info - left side, above tab bar */}
         <View style={[
           styles.infoContainerLandscape,
-          { bottom: 20, left: spacing.lg }
+          { bottom: bottomInset, left: spacing.lg }
         ]}>
           <Text variant="h3" numberOfLines={2} style={styles.title}>
             {item.title}
@@ -448,8 +483,20 @@ export function TrailerFeed({ onClose }: TrailerFeedProps) {
           </View>
         </View>
 
-        {/* Action buttons - horizontal at bottom right */}
-        <View style={styles.actionsContainerLandscape}>
+        {/* Mute / Unmute - above player */}
+        <Pressable
+          onPress={() => setIsMuted((m) => !m)}
+          style={[styles.muteButton, { top: contentHeight * 0.04 + spacing.sm }]}
+        >
+          <Ionicons
+            name={isMuted ? 'volume-mute' : 'volume-high'}
+            size={24}
+            color="#FFF"
+          />
+        </Pressable>
+
+        {/* Action buttons - above tab bar */}
+        <View style={[styles.actionsContainerLandscape, { bottom: bottomInset }]}>
           {/* Like button */}
           <Pressable
             onPress={() => handleLike(item)}
@@ -496,7 +543,7 @@ export function TrailerFeed({ onClose }: TrailerFeedProps) {
         </View>
       </View>
     );
-  }, [currentIndex, isScreenFocused, likedIds, dislikedIds, handleLike, handleDislike, theme, screenWidth, screenHeight]);
+  }, [currentIndex, isScreenFocused, isMuted, playAfterReady, likedIds, dislikedIds, handleLike, handleDislike, theme, contentWidth, contentHeight, bottomInset]);
 
   if (isLoading) {
     return (
@@ -532,15 +579,15 @@ export function TrailerFeed({ onClose }: TrailerFeedProps) {
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
         getItemLayout={(_, index) => ({
-          length: screenHeight,
-          offset: screenHeight * index,
+          length: contentHeight,
+          offset: contentHeight * index,
           index,
         })}
         onEndReached={loadMoreTrailers}
         onEndReachedThreshold={2}
         ListFooterComponent={
           isLoadingMore ? (
-            <View style={[styles.loadingMore, { height: screenHeight }]}>
+            <View style={[styles.loadingMore, { height: contentHeight }]}>
               <ActivityIndicator size="large" color={theme.colors.primary[500]} />
               <Text variant="caption" color="secondary" style={{ marginTop: spacing.sm }}>
                 Loading more trailers...
@@ -550,9 +597,9 @@ export function TrailerFeed({ onClose }: TrailerFeedProps) {
         }
       />
 
-      {/* Swipe hint for first trailer */}
+      {/* Swipe hint for first trailer - above tab bar */}
       {currentIndex === 0 && trailers.length > 1 && (
-        <View style={styles.swipeHint}>
+        <View style={[styles.swipeHint, { bottom: bottomInset + spacing.md }]}>
           <Ionicons name="chevron-down" size={24} color="rgba(255,255,255,0.5)" />
           <Text variant="caption" style={{ color: 'rgba(255,255,255,0.5)' }}>
             Swipe for more
@@ -608,6 +655,28 @@ const styles = StyleSheet.create({
     right: 0,
     alignItems: 'center',
   },
+  posterPlaceholder: {
+    overflow: 'hidden',
+    borderRadius: 8,
+    backgroundColor: '#1a1a1a',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  posterPlayIcon: {
+    position: 'absolute',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  muteButton: {
+    position: 'absolute',
+    right: spacing.lg,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   leftGradient: {
     position: 'absolute',
     top: 0,
@@ -654,7 +723,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     flexDirection: 'row',
     right: spacing.lg,
-    bottom: 20,
     gap: spacing.xl,
   },
   actionButton: {

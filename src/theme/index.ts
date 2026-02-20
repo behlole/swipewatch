@@ -2,6 +2,7 @@ import { useColorScheme } from 'react-native';
 import { colors } from './colors';
 import { typography, fontWeights } from './typography';
 import { spacing, borderRadius, shadows } from './spacing';
+import { usePreferencesStore } from '../stores/preferencesStore';
 
 export { colors } from './colors';
 export { typography, fontWeights } from './typography';
@@ -44,11 +45,14 @@ export interface Theme {
 
 /**
  * Hook to access the current theme
- * Automatically detects system color scheme and returns appropriate theme values
+ * Uses saved preference (dark/light/system); when system, follows device color scheme
  */
 export function useTheme(): Theme {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark' || colorScheme === null; // Default to dark
+  const themeMode = usePreferencesStore((state) => state.themeMode);
+  const systemScheme = useColorScheme();
+  const isDark =
+    themeMode === 'dark' ||
+    (themeMode === 'system' && (systemScheme === 'dark' || systemScheme === null));
 
   const themeColors = isDark ? colors.dark : colors.light;
 

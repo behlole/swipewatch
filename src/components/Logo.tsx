@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import Svg, { Path, Circle, G, Defs, LinearGradient, Stop } from 'react-native-svg';
-import { colors } from '../theme';
+import { colors, useTheme } from '../theme';
 
 interface LogoProps {
   size?: number;
@@ -9,6 +9,10 @@ interface LogoProps {
 }
 
 export function Logo({ size = 80, variant = 'icon' }: LogoProps) {
+  const theme = useTheme();
+  const playColor = theme.colors.text.primary;
+  const playColorDim = theme.colors.text.secondary;
+
   return (
     <View style={[styles.container, { width: size, height: size }]}>
       <Svg width={size} height={size} viewBox="0 0 120 120">
@@ -18,8 +22,8 @@ export function Logo({ size = 80, variant = 'icon' }: LogoProps) {
             <Stop offset="100%" stopColor={colors.primary[600]} />
           </LinearGradient>
           <LinearGradient id="playGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <Stop offset="0%" stopColor="#FFFFFF" />
-            <Stop offset="100%" stopColor="#F0F0F0" />
+            <Stop offset="0%" stopColor={playColor} />
+            <Stop offset="100%" stopColor={playColorDim} />
           </LinearGradient>
         </Defs>
 
@@ -74,6 +78,7 @@ export function Logo({ size = 80, variant = 'icon' }: LogoProps) {
 
 // Simplified version for small sizes
 export function LogoSimple({ size = 32 }: { size?: number }) {
+  const theme = useTheme();
   return (
     <Svg width={size} height={size} viewBox="0 0 120 120">
       <Defs>
@@ -89,7 +94,7 @@ export function LogoSimple({ size = 32 }: { size?: number }) {
       {/* Play button */}
       <Path
         d="M48 35 L48 85 L92 60 Z"
-        fill="#FFFFFF"
+        fill={theme.colors.text.primary}
       />
     </Svg>
   );

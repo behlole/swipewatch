@@ -9,7 +9,7 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useTheme, borderRadius, spacing, colors } from '../../theme';
+import { useTheme, borderRadius, spacing } from '../../theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -66,6 +66,9 @@ export function Skeleton({
     };
   });
 
+  const bgColor = theme.colors.background.tertiary;
+  const shimmerColor = theme.colors.background.elevated + '60';
+
   return (
     <View
       style={[
@@ -74,18 +77,14 @@ export function Skeleton({
           width: finalWidth,
           height,
           borderRadius: finalRadius,
-          backgroundColor: colors.dark.background.tertiary,
+          backgroundColor: bgColor,
         },
         style,
       ]}
     >
       <Animated.View style={[styles.shimmerContainer, shimmerStyle]}>
         <LinearGradient
-          colors={[
-            'transparent',
-            colors.dark.background.elevated + '40',
-            'transparent',
-          ]}
+          colors={['transparent', shimmerColor, 'transparent']}
           start={{ x: 0, y: 0.5 }}
           end={{ x: 1, y: 0.5 }}
           style={styles.shimmerGradient}
