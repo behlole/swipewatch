@@ -30,8 +30,48 @@ export function AdNativeRow({ placement }: AdNativeRowProps) {
     setHasError(true);
   }, [placement]);
 
-  if (!isNativeAdsAvailable || !nativeAdsModule) return null;
-  if (isPremium) return null;
+  if (isPremium || !adsEnabled) return null;
+
+  // Expo Go / web: show placeholder so layout is reserved
+  if (!isNativeAdsAvailable || !nativeAdsModule) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <View style={styles.titleRow}>
+            <View
+              style={[
+                styles.iconContainer,
+                { backgroundColor: theme.colors.text.tertiary + '20' },
+              ]}
+            >
+              <Ionicons
+                name="megaphone-outline"
+                size={14}
+                color={theme.colors.text.tertiary}
+              />
+            </View>
+            <Text variant="caption" color="tertiary">
+              Sponsored
+            </Text>
+          </View>
+        </View>
+        <View style={styles.adWrapper}>
+          <Card
+            variant="filled"
+            padding="sm"
+            style={[
+              styles.adCard,
+              { backgroundColor: theme.colors.background.secondary },
+            ]}
+          >
+            <View style={styles.loadingContainer}>
+              <AdPlaceholder size="mediumRectangle" />
+            </View>
+          </Card>
+        </View>
+      </View>
+    );
+  }
 
   const { BannerAd, BannerAdSize } = nativeAdsModule;
   const unitId = AD_UNIT_IDS[placement];

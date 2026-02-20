@@ -15,7 +15,7 @@ interface AdNativeListItemProps {
 
 export function AdNativeListItem({ placement }: AdNativeListItemProps) {
   const theme = useTheme();
-  const { isPremium, recordImpression } = useAdStore();
+  const { isPremium, adsEnabled, recordImpression } = useAdStore();
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
 
@@ -25,13 +25,37 @@ export function AdNativeListItem({ placement }: AdNativeListItemProps) {
     recordImpression(placement);
   }, [placement, recordImpression]);
 
-  const handleAdFailed = useCallback((error: Error) => {
+  const handleAdFailed = useCallback(() => {
     setIsLoading(false);
     setHasError(true);
-  }, [placement]);
+  }, []);
 
-  if (!isNativeAdsAvailable || !nativeAdsModule) return null;
-  if (isPremium) return null;
+  if (isPremium || !adsEnabled) return null;
+
+  if (!isNativeAdsAvailable || !nativeAdsModule) {
+    return (
+      <View
+        style={[
+          styles.container,
+          { backgroundColor: theme.colors.background.secondary },
+        ]}
+      >
+        <View style={styles.labelRow}>
+          <Ionicons
+            name="megaphone-outline"
+            size={12}
+            color={theme.colors.text.tertiary}
+          />
+          <Text variant="captionSmall" color="tertiary">
+            Sponsored
+          </Text>
+        </View>
+        <View style={styles.adContent}>
+          <AdPlaceholder size="largeBanner" />
+        </View>
+      </View>
+    );
+  }
 
   const { BannerAd, BannerAdSize } = nativeAdsModule;
   const unitId = AD_UNIT_IDS[placement];
@@ -43,7 +67,6 @@ export function AdNativeListItem({ placement }: AdNativeListItemProps) {
         { backgroundColor: theme.colors.background.secondary },
       ]}
     >
-      {/* Sponsored label */}
       <View style={styles.labelRow}>
         <Ionicons
           name="megaphone-outline"
@@ -55,21 +78,20 @@ export function AdNativeListItem({ placement }: AdNativeListItemProps) {
         </Text>
       </View>
 
-      {/* Ad Content */}
       <View style={styles.adContent}>
-        {isLoading && (
-          <AdPlaceholder size="largeBanner" />
-        )}
+        {isLoading && <AdPlaceholder size="largeBanner" />}
         {!hasError && (
-          <BannerAd
-            unitId={unitId}
-            size={BannerAdSize.LARGE_BANNER}
-            requestOptions={{
-              requestNonPersonalizedAdsOnly: true,
-            }}
-            onAdLoaded={handleAdLoaded}
-            onAdFailedToLoad={handleAdFailed}
-          />
+          <View style={styles.bannerWrapper}>
+            <BannerAd
+              unitId={unitId}
+              size={BannerAdSize.LARGE_BANNER}
+              requestOptions={{
+                requestNonPersonalizedAdsOnly: true,
+              }}
+              onAdLoaded={handleAdLoaded}
+              onAdFailedToLoad={handleAdFailed}
+            />
+          </View>
         )}
         {hasError && !isLoading && (
           <View style={styles.errorContainer}>
@@ -102,6 +124,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 100,
+  },
+  bannerWrapper: {
+    width: '100%',
+    minHeight: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   errorContainer: {
     height: 100,

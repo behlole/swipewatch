@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { View, StyleSheet, FlatList, Pressable, Alert } from 'react-native';
+import { View, StyleSheet, FlatList, Pressable, Alert, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -30,12 +30,21 @@ const SORT_OPTIONS: { key: SortOption; label: string; icon: string }[] = [
   { key: 'year', label: 'Year', icon: 'calendar-outline' },
 ];
 
+const GRID_GAP = spacing.sm;
+const GRID_COLUMNS = 2;
+
 export default function WatchlistScreen() {
   const theme = useTheme();
+  const { width: screenWidth } = useWindowDimensions();
   const [activeFilter, setActiveFilter] = useState<FilterOption>('all');
   const [sortBy, setSortBy] = useState<SortOption>('dateAdded');
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [isGridView, setIsGridView] = useState(true);
+
+  const gridCardWidth = useMemo(() => {
+    const contentWidth = screenWidth - spacing.screenPadding * 2;
+    return Math.floor((contentWidth - GRID_GAP * (GRID_COLUMNS - 1)) / GRID_COLUMNS);
+  }, [screenWidth]);
 
   const { items, stats, removeItem, toggleWatched, toMedia } = useWatchlist({
     filterBy: activeFilter,
@@ -77,8 +86,10 @@ export default function WatchlistScreen() {
             <PosterCard
               media={media}
               size="md"
+              width={gridCardWidth}
               onPress={() => handleItemPress(item)}
               showYear
+              compact
             />
           </Pressable>
           {item.watched && (
@@ -133,7 +144,7 @@ export default function WatchlistScreen() {
       </Pressable>
       </>
     );
-  }, [isGridView, toMedia, handleItemPress, handleLongPress, toggleWatched, theme.colors]);
+  }, [isGridView, gridCardWidth, toMedia, handleItemPress, handleLongPress, toggleWatched, theme.colors]);
 
   const isEmpty = items.length === 0;
 
@@ -156,7 +167,7 @@ export default function WatchlistScreen() {
             style={[styles.iconButton, { backgroundColor: theme.colors.background.secondary }]}
           >
             <Ionicons
-              name={isGridView ? 'list' : 'grid'}
+              name={isGridView ? 'grid' : 'list'}
               size={20}
               color={theme.colors.text.primary}
             />
@@ -226,11 +237,11 @@ export default function WatchlistScreen() {
       {isEmpty ? (
         <View style={styles.emptyState}>
           <View
-            style={[styles.iconContainer, { backgroundColor: theme.colors.background.secondary }]}
+            style={[styles.emptyIconContainer, { backgroundColor: theme.colors.background.secondary }]}
           >
-            <Ionicons name="bookmark-outline" size={48} color={theme.colors.text.secondary} />
+            <Ionicons name="bookmark-outline" size={32} color={theme.colors.text.secondary} />
           </View>
-          <Text variant="h3" align="center">
+          <Text variant="h3" align="center" style={styles.emptyTitle}>
             {activeFilter === 'all'
               ? 'Your Watchlist is Empty'
               : `No ${activeFilter === 'movie' ? 'Movies' : activeFilter === 'tv' ? 'TV Shows' : activeFilter === 'watched' ? 'Watched Items' : 'Items to Watch'}`}
@@ -295,8 +306,8 @@ const styles = StyleSheet.create({
   filters: {
     flexDirection: 'row',
     paddingHorizontal: spacing.screenPadding,
-    paddingBottom: spacing.md,
-    gap: spacing.sm,
+    paddingBottom: spacing.xs,
+    gap: spacing.xs,
   },
   listContent: {
     paddingHorizontal: spacing.screenPadding,
@@ -304,11 +315,14 @@ const styles = StyleSheet.create({
   },
   gridContent: {
     gap: spacing.md,
+    paddingBottom: spacing.xl,
   },
   gridRow: {
-    justifyContent: 'space-between',
+    flexDirection: 'row',
+    gap: GRID_GAP,
   },
   gridItem: {
+    flex: 1,
     position: 'relative',
   },
   watchedBadge: {
@@ -347,21 +361,22 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   emptyState: {
-    flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    padding: spacing.screenPadding,
+    paddingHorizontal: spacing.screenPadding,
+    paddingTop: spacing.xs,
   },
-  iconContainer: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+  emptyIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: spacing.xl,
+    marginBottom: spacing.xs,
+  },
+  emptyTitle: {
+    marginBottom: 2,
   },
   emptyText: {
-    marginTop: spacing.sm,
     maxWidth: 280,
   },
 });

@@ -1,9 +1,8 @@
 import React from 'react';
-import { View, StyleSheet, Pressable, Dimensions } from 'react-native';
+import { View, StyleSheet, Pressable } from 'react-native';
 import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { Text, Badge } from '../ui';
+import { Text } from '../ui';
 import { useTheme, spacing, borderRadius, shadows, getRatingColor } from '../../theme';
 import { Media } from '../../types';
 import { getPosterUrl } from '../../services/tmdb';
@@ -16,34 +15,45 @@ const SIZE_CONFIG: Record<PosterSize, { width: number; height: number }> = {
   lg: { width: 180, height: 270 },
 };
 
+const POSTER_ASPECT = 210 / 140; // height/width for md
+
 interface PosterCardProps {
   media: Media;
   size?: PosterSize;
+  /** When set (e.g. for grid), card fills this width; height is derived from aspect ratio */
+  width?: number;
   onPress?: () => void;
   showRating?: boolean;
   showTitle?: boolean;
   showYear?: boolean;
   inWatchlist?: boolean;
+  /** Tighter spacing for grid layout */
+  compact?: boolean;
 }
 
 export function PosterCard({
   media,
   size = 'md',
+  width: widthProp,
   onPress,
   showRating = true,
   showTitle = true,
   showYear = false,
   inWatchlist = false,
+  compact = false,
 }: PosterCardProps) {
   const theme = useTheme();
-  const { width, height } = SIZE_CONFIG[size];
-  const posterUrl = getPosterUrl(media.posterPath, size === 'sm' ? 'small' : 'medium');
+  const sizeConfig = SIZE_CONFIG[size];
+  const width = widthProp ?? sizeConfig.width;
+  const height = widthProp ? Math.round(widthProp * POSTER_ASPECT) : sizeConfig.height;
+  const posterUrl = getPosterUrl(media.posterPath, width <= 100 ? 'small' : 'medium');
 
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
         styles.container,
+        compact && styles.containerCompact,
         { width, opacity: pressed ? 0.9 : 1 },
       ]}
     >
@@ -91,7 +101,7 @@ export function PosterCard({
 
       {/* Title & Year */}
       {(showTitle || showYear) && (
-        <View style={styles.info}>
+        <View style={[styles.info, compact && styles.infoCompact]}>
           {showTitle && (
             <Text variant="caption" numberOfLines={2} style={styles.title}>
               {media.title}
@@ -111,6 +121,9 @@ export function PosterCard({
 const styles = StyleSheet.create({
   container: {
     marginBottom: spacing.xs,
+  },
+  containerCompact: {
+    marginBottom: 0,
   },
   posterContainer: {
     borderRadius: borderRadius.md,
@@ -157,6 +170,10 @@ const styles = StyleSheet.create({
   info: {
     marginTop: spacing.xs,
     paddingHorizontal: 2,
+  },
+  infoCompact: {
+    marginTop: 4,
+    minHeight: 36,
   },
   title: {
     fontWeight: '500',
