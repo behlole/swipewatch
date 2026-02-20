@@ -19,7 +19,7 @@ export default function SwipeScreen() {
   const { items, isLoading, onSwipe, onUndo, canUndo, error } = useSwipeDeck();
 
   // Ad integration
-  const { shouldShowInterstitial, recordSwipe, resetSwipeCount } = useAdStore();
+  const { recordSwipe, resetSwipeCount } = useAdStore();
   const { showAd, isReady: adReady } = useInterstitialAd({
     placement: 'swipe_interstitial',
     onClose: () => resetSwipeCount(),
@@ -27,18 +27,21 @@ export default function SwipeScreen() {
 
   const handleSwipe = useCallback(
     (item: Media, direction: 'left' | 'right', engagement?: any) => {
-      // Record swipe for ad frequency tracking
+      // Record swipe for ad frequency tracking first
       recordSwipe();
 
-      // Call the original swipe handler
+      // Call the original swipe handler (removes card from deck)
       onSwipe(item, direction, engagement);
 
-      // Check if we should show an interstitial ad
-      if (shouldShowInterstitial() && adReady) {
-        showAd();
-      }
+      // Defer ad check so store state and native bridge are ready; show after 7 swipes
+      setTimeout(() => {
+        const adStore = useAdStore.getState();
+        if (adStore.shouldShowInterstitial() && adStore.canShowAd('swipe_interstitial')) {
+          showAd();
+        }
+      }, 100);
     },
-    [onSwipe, recordSwipe, shouldShowInterstitial, adReady, showAd]
+    [onSwipe, recordSwipe, showAd]
   );
 
   const handleCardPress = (media: Media) => {

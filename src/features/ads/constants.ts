@@ -10,14 +10,14 @@ const TestIds = nativeAdsModule?.TestIds ?? { BANNER: TEST_BANNER, INTERSTITIAL:
 // Set EXPO_PUBLIC_USE_TEST_ADS=false for production ads
 const USE_TEST_ADS = process.env.EXPO_PUBLIC_USE_TEST_ADS !== 'false';
 
-// Production AdMob unit IDs (app ID prefix: ca-app-pub-8017092196734683)
+// Production AdMob unit IDs: use .env when set, else fallback (see .env for keys)
 const PRODUCTION_AD_UNIT_IDS: Record<AdPlacement, string> = {
-  home_between_rows: 'ca-app-pub-8017092196734683/4612687793', // detail-banner (reused for home)
-  swipe_interstitial: 'ca-app-pub-8017092196734683/2186234387', // swipe-interstitial
-  watchlist_inline: 'ca-app-pub-8017092196734683/3969797760',   // watchlist-native
-  profile_section: 'ca-app-pub-8017092196734683/2193973241',    // profile-banner
-  media_detail: 'ca-app-pub-8017092196734683/4612687793',       // detail-banner
-  analytics_section: 'ca-app-pub-8017092196734683/8567809901',  // analytics-banner
+  home_between_rows: process.env.EXPO_PUBLIC_ADMOB_BANNER_DETAIL ?? 'ca-app-pub-8017092196734683/4612687793',
+  swipe_interstitial: process.env.EXPO_PUBLIC_ADMOB_INTERSTITIAL_SWIPE ?? 'ca-app-pub-8017092196734683/2186234387',
+  watchlist_inline: process.env.EXPO_PUBLIC_ADMOB_NATIVE_WATCHLIST ?? 'ca-app-pub-8017092196734683/3969797760',
+  profile_section: process.env.EXPO_PUBLIC_ADMOB_BANNER_PROFILE ?? 'ca-app-pub-8017092196734683/2193973241',
+  media_detail: process.env.EXPO_PUBLIC_ADMOB_BANNER_DETAIL ?? 'ca-app-pub-8017092196734683/4612687793',
+  analytics_section: process.env.EXPO_PUBLIC_ADMOB_BANNER_ANALYTICS ?? 'ca-app-pub-8017092196734683/8567809901',
 };
 
 export const AD_UNIT_IDS: Record<AdPlacement, string> = USE_TEST_ADS
@@ -35,7 +35,7 @@ export const DEFAULT_FREQUENCY_CONFIG: FrequencyCapConfig = {
   maxImpressionsPerSession: 15,
   maxImpressionsPerPlacement: 5,
   minTimeBetweenAds: 60000, // 1 minute
-  swipesBetweenInterstitials: 8,
+  swipesBetweenInterstitials: 7,
 };
 
 export const BANNER_HEIGHTS = {

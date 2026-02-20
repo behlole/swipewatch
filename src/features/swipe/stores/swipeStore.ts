@@ -9,13 +9,18 @@ export interface SwipeHistory {
   timestamp: Date;
 }
 
+/** Unique key so movie 123 and tv 123 are tracked separately */
+export function swipeKey(media: { id: number; type: string }): string {
+  return `${media.type}-${media.id}`;
+}
+
 interface SwipeState {
   // Current session
   mode: 'solo' | 'group';
   groupId: string | null;
 
-  // Tracking
-  swipedIds: Set<number>;
+  // Tracking by "type-id" so the same card never reappears
+  swipedKeys: Set<string>;
   swipeHistory: SwipeHistory[];
   currentFilters: SwipeFilters;
 
@@ -25,7 +30,7 @@ interface SwipeState {
   undoLastSwipe: () => SwipeHistory | null;
   setFilters: (filters: Partial<SwipeFilters>) => void;
   resetSession: () => void;
-  hasBeenSwiped: (id: number) => boolean;
+  hasBeenSwiped: (id: number, type?: string) => boolean;
   getRecentSwipes: (limit?: number) => SwipeHistory[];
 }
 
@@ -48,7 +53,7 @@ const defaultFilters: SwipeFilters = {
 export const useSwipeStore = create<SwipeState>((set, get) => ({
   mode: 'solo',
   groupId: null,
-  swipedIds: new Set(),
+  swipedKeys: new Set(),
   swipeHistory: [],
   currentFilters: defaultFilters,
 
@@ -56,7 +61,7 @@ export const useSwipeStore = create<SwipeState>((set, get) => ({
 
   addSwipe: (media, direction, engagement) =>
     set((state) => ({
-      swipedIds: new Set([...state.swipedIds, media.id]),
+      swipedKeys: new Set([...state.swipedKeys, swipeKey(media)]),
       swipeHistory: [
         ...state.swipeHistory,
         { media, direction, engagement, timestamp: new Date() },
@@ -68,11 +73,11 @@ export const useSwipeStore = create<SwipeState>((set, get) => ({
     if (state.swipeHistory.length === 0) return null;
 
     const lastSwipe = state.swipeHistory[state.swipeHistory.length - 1];
-    const newSwipedIds = new Set(state.swipedIds);
-    newSwipedIds.delete(lastSwipe.media.id);
+    const newSwipedKeys = new Set(state.swipedKeys);
+    newSwipedKeys.delete(swipeKey(lastSwipe.media));
 
     set({
-      swipedIds: newSwipedIds,
+      swipedKeys: newSwipedKeys,
       swipeHistory: state.swipeHistory.slice(0, -1),
     });
 
@@ -86,11 +91,14 @@ export const useSwipeStore = create<SwipeState>((set, get) => ({
 
   resetSession: () =>
     set({
-      swipedIds: new Set(),
+      swipedKeys: new Set(),
       swipeHistory: [],
     }),
 
-  hasBeenSwiped: (id) => get().swipedIds.has(id),
+  hasBeenSwiped: (id, type) =>
+    type
+      ? get().swipedKeys.has(`${type}-${id}`)
+      : get().swipedKeys.has(`movie-${id}`) || get().swipedKeys.has(`tv-${id}`),
 
   getRecentSwipes: (limit = 20) => {
     const state = get();

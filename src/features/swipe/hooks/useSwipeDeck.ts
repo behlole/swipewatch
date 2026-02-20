@@ -9,8 +9,7 @@ import { getTasteProfile, getInteractedContentIds } from '../../../services/fire
 import { Media, SwipeDirection } from '../../../types';
 import { SwipeEngagement, createDefaultEngagement, Recommendation } from '../../../types/recommendations';
 
-const PREFETCH_THRESHOLD = 5;
-const PAGE_SIZE = 20;
+const PREFETCH_THRESHOLD = 3; // Fetch more when 3 or fewer cards left
 const PERSONALIZED_RATIO = 0.3; // 30% personalized content mixed in
 
 interface UseSwipeDeckOptions {
@@ -39,13 +38,11 @@ function recommendationToMedia(rec: Recommendation): Media {
 }
 
 export function useSwipeDeck(options: UseSwipeDeckOptions = {}) {
-  const {
-    swipedIds,
-    currentFilters,
-    addSwipe,
-    undoLastSwipe,
-    hasBeenSwiped,
-  } = useSwipeStore();
+  const swipedKeys = useSwipeStore((s) => s.swipedKeys);
+  const currentFilters = useSwipeStore((s) => s.currentFilters);
+  const addSwipe = useSwipeStore((s) => s.addSwipe);
+  const undoLastSwipe = useSwipeStore((s) => s.undoLastSwipe);
+  const hasBeenSwiped = useSwipeStore((s) => s.hasBeenSwiped);
   const { addItem: addToWatchlist, isInWatchlist } = useWatchlistStore();
   const firebaseUser = useAuthStore((state) => state.firebaseUser);
 
@@ -100,40 +97,44 @@ export function useSwipeDeck(options: UseSwipeDeckOptions = {}) {
     fetchPersonalized();
   }, [fetchPersonalized]);
 
-  // Filter out already swiped items and previously interacted items
+  // Filter out already swiped items (by type+id) and previously interacted items; dedupe
   const availableItems = useMemo(() => {
-    const isExcluded = (id: number) => hasBeenSwiped(id) || interactedIds.has(id);
-    const discoveryItems = allItems.filter((item) => !isExcluded(item.id));
-    const availablePersonalized = personalizedItems.filter((item) => !isExcluded(item.id));
+    const isExcluded = (item: Media) =>
+      hasBeenSwiped(item.id, item.type) || interactedIds.has(item.id);
+    const discoveryItems = allItems.filter((item) => !isExcluded(item));
+    const availablePersonalized = personalizedItems.filter((item) => !isExcluded(item));
+
+    const seen = new Set<string>();
+    const dedupe = (item: Media) => {
+      const key = `${item.type}-${item.id}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    };
 
     if (availablePersonalized.length === 0) {
-      return discoveryItems;
+      return discoveryItems.filter(dedupe);
     }
 
-    // Mix personalized content throughout the deck
+    // Mix personalized content throughout the deck; no duplicate id+type
     const mixed: Media[] = [];
-    const personalizedInterval = Math.ceil(1 / PERSONALIZED_RATIO); // Insert every N items
+    const personalizedInterval = Math.ceil(1 / PERSONALIZED_RATIO);
     let pIndex = 0;
     let dIndex = 0;
 
     while (dIndex < discoveryItems.length || pIndex < availablePersonalized.length) {
-      // Add discovery items
       for (let i = 0; i < personalizedInterval - 1 && dIndex < discoveryItems.length; i++) {
-        mixed.push(discoveryItems[dIndex++]);
+        const item = discoveryItems[dIndex++];
+        if (dedupe(item)) mixed.push(item);
       }
-
-      // Add a personalized item
       if (pIndex < availablePersonalized.length) {
-        // Avoid duplicates
         const pItem = availablePersonalized[pIndex++];
-        if (!mixed.some(m => m.id === pItem.id)) {
-          mixed.push(pItem);
-        }
+        if (dedupe(pItem)) mixed.push(pItem);
       }
     }
 
     return mixed;
-  }, [allItems, personalizedItems, swipedIds, interactedIds, hasBeenSwiped]);
+  }, [allItems, personalizedItems, swipedKeys, interactedIds, hasBeenSwiped]);
 
   // Fetch movies/TV shows (returns promise for prefetch coordination)
   const fetchItems = useCallback(
@@ -202,7 +203,7 @@ export function useSwipeDeck(options: UseSwipeDeckOptions = {}) {
     fetchItems(1);
   }, [mergedFilters.contentType, mergedFilters.genres.join(','), mergedFilters.minRating, fetchItems]);
 
-  // Prefetch next page when running low (or when cards run out)
+  // Prefetch next page when running low so the next card is always ready
   useEffect(() => {
     if (
       availableItems.length > PREFETCH_THRESHOLD ||
@@ -219,6 +220,16 @@ export function useSwipeDeck(options: UseSwipeDeckOptions = {}) {
       isFetchingNextPageRef.current = false;
     });
   }, [availableItems.length, currentPage, totalPages, isLoading, fetchItems]);
+
+  // When deck is empty after swipes, try fetching page 1 again (filters may have been reset or more content available)
+  const prevLengthRef = useRef(availableItems.length);
+  useEffect(() => {
+    if (prevLengthRef.current > 0 && availableItems.length === 0 && !isLoading) {
+      setCurrentPage(1);
+      fetchItems(1);
+    }
+    prevLengthRef.current = availableItems.length;
+  }, [availableItems.length, isLoading, fetchItems]);
 
   // Track session position for engagement context
   const sessionPositionRef = useRef(0);

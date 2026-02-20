@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { View, StyleSheet, Dimensions } from 'react-native';
 import { SwipeCard } from './SwipeCard';
 import { SwipeActions } from './SwipeActions';
@@ -32,6 +32,13 @@ export function SwipeStack({
 }: SwipeStackProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
 
+  // When list shrinks (e.g. after swipe removes item), ensure index is in range
+  useEffect(() => {
+    if (currentIndex >= items.length && items.length > 0) {
+      setCurrentIndex(0);
+    }
+  }, [items.length, currentIndex]);
+
   const visibleCards = items.slice(currentIndex, currentIndex + 3);
 
   const handleSwipe = useCallback(
@@ -39,15 +46,11 @@ export function SwipeStack({
       const currentItem = items[currentIndex];
       if (currentItem) {
         onSwipe(currentItem, direction, engagement);
-        setCurrentIndex((prev) => prev + 1);
-
-        // Trigger onEndReached when near end
-        if (items.length - currentIndex <= 5 && onEndReached) {
-          onEndReached();
-        }
+        // Do not increment currentIndex: parent removes swiped item from list,
+        // so the next card becomes items[0] on next render.
       }
     },
-    [currentIndex, items, onSwipe, onEndReached]
+    [currentIndex, items, onSwipe]
   );
 
   const handleCardPress = useCallback(() => {
@@ -58,11 +61,11 @@ export function SwipeStack({
   }, [currentIndex, items, onCardPress]);
 
   const handleUndo = useCallback(() => {
-    if (currentIndex > 0 && onUndo) {
-      setCurrentIndex((prev) => prev - 1);
+    if (onUndo) {
       onUndo();
+      // List will grow with the undone card back at front; we keep currentIndex 0
     }
-  }, [currentIndex, onUndo]);
+  }, [onUndo]);
 
   if (isLoading && visibleCards.length === 0) {
     return (
@@ -108,7 +111,7 @@ export function SwipeStack({
         onSwipeLeft={() => handleSwipe('left', createDefaultEngagement())}
         onSwipeRight={() => handleSwipe('right', createDefaultEngagement())}
         onUndo={handleUndo}
-        canUndo={canUndo && currentIndex > 0}
+        canUndo={canUndo}
       />
     </View>
   );

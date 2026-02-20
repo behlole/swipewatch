@@ -4,6 +4,8 @@ import { AD_UNIT_IDS } from '../constants';
 import { AdPlacement } from '../types';
 import { isNativeAdsAvailable, nativeAdsModule } from '../nativeAdsGate';
 
+const SWIPE_INTERSTITIAL_PLACEMENT: AdPlacement = 'swipe_interstitial';
+
 interface UseInterstitialAdOptions {
   placement: AdPlacement;
   onClose?: () => void;
@@ -26,6 +28,7 @@ export function useInterstitialAd({
   const [isReady, setIsReady] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const adRef = useRef<{ show: () => void } | null>(null);
+  const pendingShowRef = useRef(false);
 
   useEffect(() => {
     if (!isNativeAdsAvailable || !nativeAdsModule) {
@@ -48,12 +51,30 @@ export function useInterstitialAd({
       () => {
         setIsReady(true);
         setIsLoading(false);
+        // Swipe interstitial: show now if user already hit 7 swipes or requested show while loading
+        if (placement === SWIPE_INTERSTITIAL_PLACEMENT) {
+          const state = useAdStore.getState();
+          const shouldShow =
+            pendingShowRef.current ||
+            (state.shouldShowInterstitial() && state.canShowAd(placement));
+          if (shouldShow) {
+            pendingShowRef.current = false;
+            try {
+              useAdStore.getState().recordImpression(placement);
+              interstitial.show();
+              setIsReady(false);
+            } catch {
+              // ignore
+            }
+          }
+        }
       }
     );
 
     const unsubscribeClosed = interstitial.addAdEventListener(
       AdEventType.CLOSED,
       () => {
+        pendingShowRef.current = false;
         setIsReady(false);
         resetSwipeCount();
         onClose?.();
@@ -65,6 +86,7 @@ export function useInterstitialAd({
     const unsubscribeError = interstitial.addAdEventListener(
       AdEventType.ERROR,
       (error) => {
+        pendingShowRef.current = false;
         setIsReady(false);
         setIsLoading(false);
         onError?.(new Error(String(error)));
@@ -83,19 +105,22 @@ export function useInterstitialAd({
 
   const showAd = useCallback((): boolean => {
     if (!isNativeAdsAvailable || !nativeAdsModule) return false;
-    if (!isReady || !adRef.current || isPremium || !adsEnabled) {
-      return false;
+    if (isPremium || !adsEnabled) return false;
+    if (!canShowAd(placement)) return false;
+    if (isReady && adRef.current) {
+      try {
+        recordImpression(placement);
+        adRef.current.show();
+        return true;
+      } catch {
+        return false;
+      }
     }
-    if (!canShowAd(placement)) {
-      return false;
+    // Ad not ready yet (e.g. still loading): show when LOADED fires
+    if (placement === SWIPE_INTERSTITIAL_PLACEMENT && useAdStore.getState().shouldShowInterstitial()) {
+      pendingShowRef.current = true;
     }
-    try {
-      recordImpression(placement);
-      adRef.current.show();
-      return true;
-    } catch {
-      return false;
-    }
+    return false;
   }, [isReady, isPremium, adsEnabled, canShowAd, recordImpression, placement]);
 
   if (!isNativeAdsAvailable) {

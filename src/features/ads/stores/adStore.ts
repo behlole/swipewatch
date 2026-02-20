@@ -137,12 +137,26 @@ export const useAdStore = create<AdStoreState>()(
     {
       name: 'swipewatch-ad-storage',
       storage: createJSONStorage(() => AsyncStorage),
-      // Only persist premium status and config, not session data
       partialize: (state) => ({
         isPremium: state.isPremium,
         adsEnabled: state.adsEnabled,
         frequencyConfig: state.frequencyConfig,
       }),
+      // Merge persisted config with defaults so swipesBetweenInterstitials stays 7
+      merge: (persisted, current) => {
+        const p = persisted as Partial<AdStoreState> | undefined;
+        if (!p) return current;
+        return {
+          ...current,
+          isPremium: p.isPremium ?? current.isPremium,
+          adsEnabled: p.adsEnabled ?? current.adsEnabled,
+          frequencyConfig: {
+            ...DEFAULT_FREQUENCY_CONFIG,
+            ...p.frequencyConfig,
+            swipesBetweenInterstitials: DEFAULT_FREQUENCY_CONFIG.swipesBetweenInterstitials,
+          },
+        };
+      },
     }
   )
 );

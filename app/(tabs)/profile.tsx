@@ -16,7 +16,7 @@ import { AdBanner } from '../../src/features/ads';
 export default function ProfileScreen() {
   const theme = useTheme();
   const { firebaseUser, signOut } = useAuth();
-  const { swipedIds, swipeHistory } = useSwipeStore();
+  const { swipedKeys, swipeHistory } = useSwipeStore();
   const { items: watchlistItems } = useWatchlistStore();
   const {
     themeMode,
@@ -35,7 +35,7 @@ export default function ProfileScreen() {
   const [showStreamingModal, setShowStreamingModal] = useState(false);
 
   // Calculate stats
-  const totalSwiped = swipedIds.size;
+  const totalSwiped = swipedKeys.size;
   const totalLiked = swipeHistory.filter((s) => s.direction === 'right').length;
   const watchlistCount = watchlistItems.length;
   const watchedCount = watchlistItems.filter((i) => i.watched).length;
