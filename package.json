@@ -12,7 +12,11 @@
     "android": "npx expo run:android",
     "prebuild": "npx expo prebuild --platform android --clean",
     "build:local:apk": "node scripts/build-android.js apk",
-    "build:local:aab": "node scripts/build-android.js aab"
+    "build:local:aab": "node scripts/build-android.js aab",
+    "android:release": "npx expo run:android --variant release",
+    "release:apk": "npm run prebuild && npm run build:local:apk",
+    "release:aab": "npm run prebuild && npm run build:local:aab",
+    "keystore-fingerprint": "node scripts/keystore-fingerprint.js"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",

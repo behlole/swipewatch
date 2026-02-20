@@ -75,15 +75,17 @@ export function AdNativeRow({ placement }: AdNativeRowProps) {
             </View>
           )}
           {!hasError && (
-            <BannerAd
-              unitId={unitId}
-              size={BannerAdSize.MEDIUM_RECTANGLE}
-              requestOptions={{
-                requestNonPersonalizedAdsOnly: true,
-              }}
-              onAdLoaded={handleAdLoaded}
-              onAdFailedToLoad={handleAdFailed}
-            />
+            <View style={styles.bannerAdWrapper}>
+              <BannerAd
+                unitId={unitId}
+                size={BannerAdSize.MEDIUM_RECTANGLE}
+                requestOptions={{
+                  requestNonPersonalizedAdsOnly: true,
+                }}
+                onAdLoaded={handleAdLoaded}
+                onAdFailedToLoad={handleAdFailed}
+              />
+            </View>
           )}
           {hasError && !isLoading && (
             <View style={styles.errorContainer}>
@@ -131,6 +133,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     minHeight: 260,
     overflow: 'hidden',
+  },
+  bannerAdWrapper: {
+    width: '100%',
+    minHeight: 250,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   loadingContainer: {
     width: '100%',

@@ -3,6 +3,8 @@ import { View } from 'react-native';
 import { Stack, router, useSegments } from 'expo-router';
 import { useFonts } from 'expo-font';
 import * as ExpoSplashScreen from 'expo-splash-screen';
+import Constants from 'expo-constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
@@ -17,6 +19,24 @@ import { isNativeAdsAvailable, nativeAdsModule } from '../src/features/ads/nativ
 
 export { ErrorBoundary } from 'expo-router';
 
+const APP_VERSION_KEY = 'swipewatch_app_version';
+
+// On app update (version change), clear persisted ad store so counts/config don't get stuck.
+async function runAppVersionMigration() {
+  try {
+    const currentVersion = (Constants.expoConfig as { version?: string } | null)?.version ?? '1.0.0';
+    const stored = await AsyncStorage.getItem(APP_VERSION_KEY);
+    if (stored !== null && stored !== currentVersion) {
+      await AsyncStorage.removeItem('swipewatch-ad-storage');
+      await AsyncStorage.setItem(APP_VERSION_KEY, currentVersion);
+    } else if (stored === null) {
+      await AsyncStorage.setItem(APP_VERSION_KEY, currentVersion);
+    }
+  } catch (e) {
+    // Non-critical
+  }
+}
+
 // Prevent native splash screen from auto-hiding
 ExpoSplashScreen.preventAutoHideAsync();
 
@@ -27,6 +47,10 @@ export default function RootLayout() {
   const [adsInitialized, setAdsInitialized] = useState(false);
   const [showAnimatedSplash, setShowAnimatedSplash] = useState(true);
   const [appReady, setAppReady] = useState(false);
+
+  useEffect(() => {
+    runAppVersionMigration();
+  }, []);
 
   useEffect(() => {
     // Initialize Google Mobile Ads SDK only when native module is present (development build).

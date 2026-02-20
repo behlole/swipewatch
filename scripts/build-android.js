@@ -32,23 +32,33 @@ if (!fs.existsSync(path.join(androidDir, 'build.gradle'))) {
   run('npx expo prebuild --platform android --clean');
 }
 
-// 2) Write keystore.properties for release signing (from credentials.json)
-if (fs.existsSync(credentialsPath)) {
-  const cred = JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
-  const ks = cred?.android?.keystore;
-  if (ks) {
-    const content = [
-      'storeFile=../../credentials/android/keystore.jks',
-      `storePassword=${ks.keystorePassword}`,
-      `keyAlias=${ks.keyAlias}`,
-      `keyPassword=${ks.keyPassword}`,
-    ].join('\n');
-    fs.writeFileSync(keystorePropsPath, content, 'utf8');
-    console.log('Wrote android/keystore.properties for release signing.');
-  }
-} else {
-  console.warn('No credentials.json found. Release build will use debug signing.');
+// 2) Require credentials.json and write keystore.properties for release signing (never use debug for store builds)
+if (!fs.existsSync(credentialsPath)) {
+  console.error('');
+  console.error('Release build requires credentials.json with android.keystore (keystorePath, keystorePassword, keyAlias, keyPassword).');
+  console.error('Without it, the AAB would be signed in debug mode and Play Console will reject it.');
+  console.error('Add credentials.json and credentials/android/keystore.jks, then run again.');
+  process.exit(1);
 }
+const cred = JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
+const ks = cred?.android?.keystore;
+if (!ks?.keystorePassword || !ks?.keyAlias || !ks?.keyPassword) {
+  console.error('credentials.json must contain android.keystore with keystorePassword, keyAlias, keyPassword.');
+  process.exit(1);
+}
+const keystorePath = path.resolve(projectRoot, ks.keystorePath || 'credentials/android/keystore.jks');
+if (!fs.existsSync(keystorePath)) {
+  console.error('Keystore file not found:', keystorePath);
+  process.exit(1);
+}
+const content = [
+  'storeFile=../../credentials/android/keystore.jks',
+  `storePassword=${ks.keystorePassword}`,
+  `keyAlias=${ks.keyAlias}`,
+  `keyPassword=${ks.keyPassword}`,
+].join('\n');
+fs.writeFileSync(keystorePropsPath, content, 'utf8');
+console.log('Wrote android/keystore.properties for release signing.');
 
 // 3) Resolve JAVA_HOME (required for Gradle)
 function findJavaHome() {

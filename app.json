@@ -5,7 +5,7 @@
   "expo": {
     "name": "swipewatch",
     "slug": "swipewatch", 
-    "version": "1.0.0",
+    "version": "1.0.4",
     "orientation": "default",
     "icon": "./assets/images/logo.png",
     "scheme": "swipewatch",
@@ -21,7 +21,7 @@
     },
     "android": {
       "package": "com.swipewatch.app",
-      "versionCode": 3,
+      "versionCode": 4,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/logo.png",
         "backgroundColor": "#0D0D0D"

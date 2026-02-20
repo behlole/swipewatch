@@ -64,20 +64,23 @@ export function AdBanner({
             backgroundColor: theme.colors.background.secondary,
             borderRadius: theme.borderRadius.md,
             minHeight: minHeight + 8,
+            width: '100%',
           },
         ]}
       >
         {isLoading && <AdPlaceholder size={size} />}
         {!hasError && (
-          <BannerAd
-            unitId={unitId}
-            size={bannerSize}
-            requestOptions={{
-              requestNonPersonalizedAdsOnly: true,
-            }}
-            onAdLoaded={handleAdLoaded}
-            onAdFailedToLoad={handleAdFailed}
-          />
+          <View style={styles.bannerWrapper}>
+            <BannerAd
+              unitId={unitId}
+              size={bannerSize}
+              requestOptions={{
+                requestNonPersonalizedAdsOnly: true,
+              }}
+              onAdLoaded={handleAdLoaded}
+              onAdFailedToLoad={handleAdFailed}
+            />
+          </View>
         )}
         {hasError && !isLoading && (
           <View style={[styles.errorContainer, { height: minHeight }]}>
@@ -107,6 +110,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
     padding: 4,
+  },
+  bannerWrapper: {
+    width: '100%',
+    minHeight: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   errorContainer: {
     alignItems: 'center',

@@ -135,9 +135,9 @@ export function useSwipeDeck(options: UseSwipeDeckOptions = {}) {
     return mixed;
   }, [allItems, personalizedItems, swipedIds, interactedIds, hasBeenSwiped]);
 
-  // Fetch movies/TV shows
+  // Fetch movies/TV shows (returns promise for prefetch coordination)
   const fetchItems = useCallback(
-    async (page: number) => {
+    async (page: number): Promise<void> => {
       setIsLoading(true);
       setError(null);
 
@@ -156,17 +156,21 @@ export function useSwipeDeck(options: UseSwipeDeckOptions = {}) {
         };
 
         let results: Media[] = [];
+        let maxPages = 1;
 
         if (mergedFilters.contentType === 'movie' || mergedFilters.contentType === 'both') {
           const movieResponse = await discoverMovies(params);
           results = [...results, ...movieResponse.results.map(transformMovie)];
-          setTotalPages(movieResponse.total_pages);
+          maxPages = Math.max(maxPages, movieResponse.total_pages);
         }
 
         if (mergedFilters.contentType === 'tv' || mergedFilters.contentType === 'both') {
           const tvResponse = await discoverTV(params);
           results = [...results, ...tvResponse.results.map(transformTVShow)];
+          maxPages = Math.max(maxPages, tvResponse.total_pages);
         }
+
+        setTotalPages(maxPages);
 
         // Filter out items without posters
         results = results.filter((item) => item.posterPath);
@@ -190,23 +194,31 @@ export function useSwipeDeck(options: UseSwipeDeckOptions = {}) {
     [mergedFilters]
   );
 
-  // Initial load
-  useEffect(() => {
-    fetchItems(1);
-    setCurrentPage(1);
-  }, [mergedFilters.contentType, mergedFilters.genres.join(','), mergedFilters.minRating]);
+  const isFetchingNextPageRef = useRef(false);
 
-  // Prefetch next page when running low
+  // Initial load when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+    fetchItems(1);
+  }, [mergedFilters.contentType, mergedFilters.genres.join(','), mergedFilters.minRating, fetchItems]);
+
+  // Prefetch next page when running low (or when cards run out)
   useEffect(() => {
     if (
-      availableItems.length <= PREFETCH_THRESHOLD &&
-      currentPage < totalPages &&
-      !isLoading
+      availableItems.length > PREFETCH_THRESHOLD ||
+      currentPage >= totalPages ||
+      isLoading ||
+      isFetchingNextPageRef.current
     ) {
-      setCurrentPage((prev) => prev + 1);
-      fetchItems(currentPage + 1);
+      return;
     }
-  }, [availableItems.length, currentPage, totalPages, isLoading]);
+    const nextPage = currentPage + 1;
+    isFetchingNextPageRef.current = true;
+    setCurrentPage(nextPage);
+    fetchItems(nextPage).finally(() => {
+      isFetchingNextPageRef.current = false;
+    });
+  }, [availableItems.length, currentPage, totalPages, isLoading, fetchItems]);
 
   // Track session position for engagement context
   const sessionPositionRef = useRef(0);
