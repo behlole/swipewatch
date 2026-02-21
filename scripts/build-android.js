@@ -51,8 +51,12 @@ if (!fs.existsSync(keystorePath)) {
   console.error('Keystore file not found:', keystorePath);
   process.exit(1);
 }
+// Path relative to android/ folder: ../ = project root so Gradle's rootProject.file() finds it
+const storeFileRelative = (ks.keystorePath && !path.isAbsolute(ks.keystorePath))
+  ? '../' + ks.keystorePath.replace(/\\/g, '/')
+  : '../credentials/android/keystore.jks';
 const content = [
-  'storeFile=../../credentials/android/keystore.jks',
+  `storeFile=${storeFileRelative}`,
   `storePassword=${ks.keystorePassword}`,
   `keyAlias=${ks.keyAlias}`,
   `keyPassword=${ks.keyPassword}`,
