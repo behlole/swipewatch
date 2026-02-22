@@ -11,6 +11,7 @@ import {
   onAuthStateChange,
   getUserDocument,
   updateOnboardingComplete,
+  updateUserPreferences,
   checkHasTasteProfile,
 } from '../../../services/firebase';
 
@@ -30,8 +31,11 @@ export function useAuth() {
     signOut: storeSignOut,
   } = useAuthStore();
 
-  // Also get preferences store to keep hasCompletedOnboarding in sync
-  const { setHasCompletedOnboarding: setPreferencesOnboarding } = usePreferencesStore();
+  const {
+    setHasCompletedOnboarding: setPreferencesOnboarding,
+    setPreferredGenres,
+    setPreferredContentType,
+  } = usePreferencesStore();
 
   // Get watchlist store for Firebase sync
   const { syncFromFirebase: syncWatchlist, clearAll: clearWatchlist } = useWatchlistStore();
@@ -61,54 +65,57 @@ export function useAuth() {
         console.log('[Auth] onAuthStateChange fired:', authUser ? `User: ${authUser.uid}` : 'No user', 'isInitialCheck:', isInitialCheckRef.current);
 
         if (authUser) {
-          // User is authenticated
-          setFirebaseUser(authUser);
-
           try {
-            // Fetch user document with a timeout
             const userDocPromise = getUserDocument(authUser.uid);
             const timeoutPromise = new Promise<null>((resolve) =>
               setTimeout(() => resolve(null), 3000)
             );
-
             const userDoc = await Promise.race([userDocPromise, timeoutPromise]);
 
-            if (isMounted) {
-              setUser(userDoc);
+            if (!isMounted) return;
 
-              // Check if user has completed onboarding from Firebase
-              // For existing users without the field, assume completed (they used app before this feature)
-              let hasCompleted = userDoc?.hasCompletedOnboarding === true ||
-                (userDoc && userDoc.hasCompletedOnboarding === undefined);
+            setUser(userDoc);
 
-              // If not marked complete, check for existing taste data
-              if (!hasCompleted) {
-                const hasTasteData = await checkHasTasteProfile(authUser.uid);
-                if (hasTasteData) {
-                  console.log('[Auth] User has existing taste data, marking onboarding complete');
-                  hasCompleted = true;
-                  // Update Firebase in background
-                  updateOnboardingComplete(authUser.uid).catch((err) =>
-                    console.warn('[Auth] Failed to update onboarding status:', err)
-                  );
-                }
+            let hasCompleted =
+              userDoc?.hasCompletedOnboarding === true ||
+              (userDoc && userDoc.hasCompletedOnboarding === undefined) ||
+              (userDoc?.preferences?.genres?.length ?? 0) > 0;
+
+            if (!hasCompleted) {
+              const hasTasteData = await checkHasTasteProfile(authUser.uid);
+              if (hasTasteData) {
+                hasCompleted = true;
+                updateOnboardingComplete(authUser.uid).catch(() => {});
+              } else {
+                hasCompleted = true; // Skip onboarding so "What do you like?" doesn't show every time
               }
-
-              if (hasCompleted) {
-                setHasCompletedOnboarding(true);
-                setPreferencesOnboarding(true); // Keep preferences store in sync
-                setIsNewSignup(false); // Not a new signup if already completed onboarding
-              }
-
-              // Sync watchlist from Firebase (non-blocking)
-              syncWatchlist(authUser.uid).catch((err) =>
-                console.warn('[Auth] Failed to sync watchlist:', err)
-              );
             }
+
+            if (hasCompleted) {
+              setHasCompletedOnboarding(true);
+              setPreferencesOnboarding(true);
+              setIsNewSignup(false);
+              if (userDoc?.preferences?.genres?.length) {
+                setPreferredGenres(userDoc.preferences.genres);
+                const ct = userDoc.preferences.contentTypes;
+                setPreferredContentType(
+                  ct?.length === 2 ? 'both' : ct?.[0] === 'tv' ? 'tv' : 'movie'
+                );
+              }
+            }
+
+            setFirebaseUser(authUser);
+            syncWatchlist(authUser.uid).catch((err) =>
+              console.warn('[Auth] Failed to sync watchlist:', err)
+            );
           } catch (error) {
             console.error('[Auth] Error fetching user document:', error);
             if (isMounted) {
               setUser(null);
+              setHasCompletedOnboarding(true);
+              setPreferencesOnboarding(true);
+              setIsNewSignup(false);
+              setFirebaseUser(authUser);
             }
           }
         } else {
@@ -144,7 +151,7 @@ export function useAuth() {
         unsubscribe();
       }
     };
-  }, [setFirebaseUser, setUser, setLoading, setHasCompletedOnboarding, setPreferencesOnboarding, setIsNewSignup, syncWatchlist]);
+  }, [setFirebaseUser, setUser, setLoading, setHasCompletedOnboarding, setPreferencesOnboarding, setIsNewSignup, setPreferredGenres, setPreferredContentType, syncWatchlist]);
 
   // Sign up
   const signUp = useCallback(
@@ -175,45 +182,50 @@ export function useAuth() {
     // Don't wait for onAuthStateChanged which may have timing issues
     if (result) {
       console.log('[useAuth] Setting authenticated state immediately');
+      setIsNewSignup(false); // Sign-in = returning user; never show "What do you like?" again
 
-      // Fetch user document to check onboarding status BEFORE setting auth state
       try {
         const userDoc = await getUserDocument(result.uid);
-        // Check if user has completed onboarding
-        // For existing users without the field, assume completed (they used app before this feature)
-        let hasCompleted = userDoc?.hasCompletedOnboarding === true ||
-          (userDoc && userDoc.hasCompletedOnboarding === undefined);
+        let hasCompleted =
+          userDoc?.hasCompletedOnboarding === true ||
+          (userDoc && userDoc.hasCompletedOnboarding === undefined) ||
+          (userDoc?.preferences?.genres?.length ?? 0) > 0;
 
-        // Even if onboarding not marked complete, check if user has taste data
-        // This allows users who have swiped to skip onboarding
         if (!hasCompleted) {
-          console.log('[useAuth] Checking for existing taste profile data...');
           const hasTasteData = await checkHasTasteProfile(result.uid);
           if (hasTasteData) {
-            console.log('[useAuth] User has existing taste data, skipping onboarding');
             hasCompleted = true;
-            // Update Firebase in background
             updateOnboardingComplete(result.uid).catch((err) =>
               console.warn('[useAuth] Failed to update onboarding status:', err)
             );
+          } else {
+            hasCompleted = true; // Returning user: skip onboarding
           }
         }
 
         if (hasCompleted) {
-          console.log('[useAuth] User has completed onboarding');
           setHasCompletedOnboarding(true);
           setPreferencesOnboarding(true);
+          if (userDoc?.preferences?.genres?.length) {
+            setPreferredGenres(userDoc.preferences.genres);
+            const ct = userDoc.preferences.contentTypes;
+            setPreferredContentType(
+              ct?.length === 2 ? 'both' : ct?.[0] === 'tv' ? 'tv' : 'movie'
+            );
+          }
         }
         setUser(userDoc);
       } catch (error) {
         console.warn('[useAuth] Failed to fetch user document on sign in:', error);
+        setHasCompletedOnboarding(true);
+        setPreferencesOnboarding(true);
       }
 
       setFirebaseUser(result);
     }
 
     return result;
-  }, [setFirebaseUser, setHasCompletedOnboarding, setPreferencesOnboarding, setUser]);
+  }, [setFirebaseUser, setHasCompletedOnboarding, setPreferencesOnboarding, setUser, setIsNewSignup, setPreferredGenres, setPreferredContentType]);
 
   // Sign out
   const signOut = useCallback(async () => {
@@ -258,33 +270,41 @@ export function useAuth() {
           setHasCompletedOnboarding(false);
         }
       } else {
-        // Existing user - fetch user document
         try {
           const userDoc = await getUserDocument(result.uid);
-          let hasCompleted = userDoc?.hasCompletedOnboarding === true ||
-            (userDoc && userDoc.hasCompletedOnboarding === undefined);
+          let hasCompleted =
+            userDoc?.hasCompletedOnboarding === true ||
+            (userDoc && userDoc.hasCompletedOnboarding === undefined) ||
+            (userDoc?.preferences?.genres?.length ?? 0) > 0;
 
-          // Check for existing taste data
           if (!hasCompleted) {
             const hasTasteData = await checkHasTasteProfile(result.uid);
             if (hasTasteData) {
-              console.log('[useAuth] Google user has existing taste data, skipping onboarding');
               hasCompleted = true;
-              // Update Firebase in background
               updateOnboardingComplete(result.uid).catch((err) =>
                 console.warn('[useAuth] Failed to update onboarding status:', err)
               );
+            } else {
+              hasCompleted = true;
             }
           }
 
           if (hasCompleted) {
-            console.log('[useAuth] User has completed onboarding');
             setHasCompletedOnboarding(true);
             setPreferencesOnboarding(true);
+            if (userDoc?.preferences?.genres?.length) {
+              setPreferredGenres(userDoc.preferences.genres);
+              const ct = userDoc.preferences.contentTypes;
+              setPreferredContentType(
+                ct?.length === 2 ? 'both' : ct?.[0] === 'tv' ? 'tv' : 'movie'
+              );
+            }
           }
           setUser(userDoc);
         } catch (error) {
           console.warn('[useAuth] Failed to fetch user document on Google sign in:', error);
+          setHasCompletedOnboarding(true);
+          setPreferencesOnboarding(true);
         }
       }
 
@@ -292,23 +312,28 @@ export function useAuth() {
     }
 
     return result;
-  }, [setFirebaseUser, setIsNewSignup, setHasCompletedOnboarding, setPreferencesOnboarding, setUser]);
+  }, [setFirebaseUser, setIsNewSignup, setHasCompletedOnboarding, setPreferencesOnboarding, setUser, setPreferredGenres, setPreferredContentType]);
 
-  // Complete onboarding - updates local state immediately, then saves to Firebase
+  // Complete onboarding - updates local state immediately, then saves preferences + flag to Firebase
   const completeOnboarding = useCallback(async () => {
-    // Set local state FIRST so routing works immediately
     setHasCompletedOnboarding(true);
     setPreferencesOnboarding(true);
     setIsNewSignup(false);
 
-    // Then save to Firebase in background (non-blocking)
     if (firebaseUser?.uid) {
       try {
+        const { preferredGenres, preferredContentType, minRating } =
+          usePreferencesStore.getState();
+        await updateUserPreferences(firebaseUser.uid, {
+          genres: preferredGenres,
+          contentTypes:
+            preferredContentType === 'both' ? ['movie', 'tv'] : [preferredContentType],
+          minRating,
+        });
         await updateOnboardingComplete(firebaseUser.uid);
-        console.log('[Auth] Onboarding completion saved to Firebase');
+        console.log('[Auth] Onboarding and preferences saved to Firebase');
       } catch (error) {
-        console.warn('[Auth] Failed to save onboarding completion to Firebase:', error);
-        // Local state is already set, so user can continue
+        console.warn('[Auth] Failed to save onboarding to Firebase:', error);
       }
     }
   }, [firebaseUser?.uid, setHasCompletedOnboarding, setPreferencesOnboarding, setIsNewSignup]);

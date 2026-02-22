@@ -145,14 +145,21 @@ export async function getUserDocument(userId: string): Promise<User | null> {
   return userDoc.data() as User;
 }
 
-// Update user preferences
+// Update user preferences (merges with existing so we don't wipe other fields)
 export async function updateUserPreferences(
   userId: string,
   preferences: Partial<User['preferences']>
 ): Promise<void> {
   const userRef = doc(db, 'users', userId);
+  const snap = await getDoc(userRef);
+  const existing = snap.exists() ? (snap.data() as User) : null;
+  const merged = {
+    ...defaultUserPreferences,
+    ...existing?.preferences,
+    ...preferences,
+  };
   await updateDoc(userRef, {
-    preferences,
+    preferences: merged,
     updatedAt: serverTimestamp(),
   });
 }
