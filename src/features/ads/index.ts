@@ -12,3 +12,6 @@ export type { AdPlacement, AdType, BannerSize, FrequencyCapConfig } from './type
 
 // Constants
 export { AD_UNIT_IDS, DEFAULT_FREQUENCY_CONFIG, BANNER_HEIGHTS } from './constants';
+
+// Gate (for checking if ads can run, e.g. Expo Go vs dev build)
+export { isNativeAdsAvailable } from './nativeAdsGate';

@@ -142,7 +142,7 @@ export const useAdStore = create<AdStoreState>()(
         adsEnabled: state.adsEnabled,
         frequencyConfig: state.frequencyConfig,
       }),
-      // Merge persisted config with defaults so swipesBetweenInterstitials stays 7
+      // Merge persisted config with defaults so swipesBetweenInterstitials stays 3
       merge: (persisted, current) => {
         const p = persisted as Partial<AdStoreState> | undefined;
         if (!p) return current;

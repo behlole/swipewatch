@@ -9,7 +9,7 @@ import { getTasteProfile, getInteractedContentIds } from '../../../services/fire
 import { Media, SwipeDirection } from '../../../types';
 import { SwipeEngagement, createDefaultEngagement, Recommendation } from '../../../types/recommendations';
 
-const PREFETCH_THRESHOLD = 3; // Fetch more when 3 or fewer cards left
+const PREFETCH_THRESHOLD = 5; // Fetch more when 5 or fewer cards left (keeps deck feeling infinite)
 const PERSONALIZED_RATIO = 0.3; // 30% personalized content mixed in
 
 interface UseSwipeDeckOptions {
@@ -221,15 +221,25 @@ export function useSwipeDeck(options: UseSwipeDeckOptions = {}) {
     });
   }, [availableItems.length, currentPage, totalPages, isLoading, fetchItems]);
 
-  // When deck is empty after swipes, try fetching page 1 again (filters may have been reset or more content available)
+  // When deck is empty after swipes, load the NEXT page and append (infinite deck; never refetch page 1 or we only get already-swiped items)
   const prevLengthRef = useRef(availableItems.length);
   useEffect(() => {
-    if (prevLengthRef.current > 0 && availableItems.length === 0 && !isLoading) {
-      setCurrentPage(1);
-      fetchItems(1);
+    if (
+      prevLengthRef.current > 0 &&
+      availableItems.length === 0 &&
+      !isLoading &&
+      !isFetchingNextPageRef.current &&
+      currentPage < totalPages
+    ) {
+      const nextPage = currentPage + 1;
+      isFetchingNextPageRef.current = true;
+      setCurrentPage(nextPage);
+      fetchItems(nextPage).finally(() => {
+        isFetchingNextPageRef.current = false;
+      });
     }
     prevLengthRef.current = availableItems.length;
-  }, [availableItems.length, isLoading, fetchItems]);
+  }, [availableItems.length, isLoading, currentPage, totalPages, fetchItems]);
 
   // Track session position for engagement context
   const sessionPositionRef = useRef(0);

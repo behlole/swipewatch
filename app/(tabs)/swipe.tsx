@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { View, StyleSheet, Pressable, Modal } from 'react-native';
+import React, { useState, useCallback, useRef } from 'react';
+import { View, StyleSheet, Pressable, Modal, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,7 +7,7 @@ import { Text, Chip, Button } from '../../src/components/ui';
 import { SwipeStack } from '../../src/components/swipe';
 import { useSwipeDeck } from '../../src/features/swipe/hooks/useSwipeDeck';
 import { useSwipeStore } from '../../src/features/swipe/stores/swipeStore';
-import { useInterstitialAd, useAdStore } from '../../src/features/ads';
+import { useInterstitialAd, useAdStore, isNativeAdsAvailable } from '../../src/features/ads';
 import { useTheme, spacing } from '../../src/theme';
 import { GENRE_NAMES } from '../../src/lib/constants';
 import { Media } from '../../src/types';
@@ -20,26 +20,39 @@ export default function SwipeScreen() {
 
   // Ad integration
   const { recordSwipe, resetSwipeCount } = useAdStore();
-  const { showAd, isReady: adReady } = useInterstitialAd({
+  const { showAd } = useInterstitialAd({
     placement: 'swipe_interstitial',
     onClose: () => resetSwipeCount(),
   });
+  const adAlertShownRef = useRef(false);
 
   const handleSwipe = useCallback(
     (item: Media, direction: 'left' | 'right', engagement?: any) => {
-      // Record swipe for ad frequency tracking first
       recordSwipe();
-
-      // Call the original swipe handler (removes card from deck)
       onSwipe(item, direction, engagement);
 
-      // Defer ad check so store state and native bridge are ready; show after 7 swipes
       setTimeout(() => {
         const adStore = useAdStore.getState();
-        if (adStore.shouldShowInterstitial() && adStore.canShowAd('swipe_interstitial')) {
-          showAd();
+        const shouldShow = adStore.shouldShowInterstitial();
+        const canShow = adStore.canShowAd('swipe_interstitial');
+        if (__DEV__) {
+          console.log('[Ad] After swipe: swipesSinceLastAd=', adStore.swipesSinceLastAd, 'shouldShow=', shouldShow, 'canShow=', canShow);
         }
-      }, 100);
+        if (shouldShow && canShow) {
+          const didShow = showAd();
+          if (__DEV__) {
+            console.log('[Ad] showAd() returned', didShow);
+            if (!didShow && !isNativeAdsAvailable && !adAlertShownRef.current) {
+              adAlertShownRef.current = true;
+              Alert.alert(
+                'Ads not available',
+                'Interstitial ads only work in a development or production build, not in Expo Go.\n\nRun: npx expo run:android (or run:ios) to test ads.',
+                [{ text: 'OK' }]
+              );
+            }
+          }
+        }
+      }, 150);
     },
     [onSwipe, recordSwipe, showAd]
   );
